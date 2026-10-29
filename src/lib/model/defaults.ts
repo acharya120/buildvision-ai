@@ -93,6 +93,7 @@ export function defaultSettings(): BuildingSettings {
     gridStep: 0.15,
     snap: true,
     defaultWallThickness: 0.115,
+    exteriorWallThickness: 0.23,
     allowOverlap: false,
     requireAdjoining: false,
     estimate: {

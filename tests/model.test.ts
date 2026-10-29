@@ -250,7 +250,7 @@ describe("estimate", () => {
     expect(get("wall-length").quantity).toBeCloseTo(14, 6);
     expect(get("wall-gross").quantity).toBeCloseTo(14 * 3, 6);
     expect(get("plaster").quantity).toBeCloseTo(14 * 3 * 2, 6);
-    expect(get("masonry").quantity).toBeCloseTo(14 * 3 * 0.115, 6);
+    expect(get("masonry").quantity).toBeCloseTo(14 * 3 * 0.23, 6);
     expect(get("slab-concrete").quantity).toBeCloseTo(12 * 0.125, 6);
     // no rates entered: nothing is priced, nothing invented
     expect(e.totalCost).toBe(0);

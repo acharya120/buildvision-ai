@@ -122,6 +122,13 @@ export function setRate(p: Project, key: string, rate: number | null): Project {
   return touch({ ...p, rates });
 }
 
+/** Replace all rates at once (used when applying a saved preset). Invalid values are dropped. */
+export function setRates(p: Project, rates: Record<string, number>): Project {
+  const clean: Record<string, number> = {};
+  for (const [k, v] of Object.entries(rates)) if (Number.isFinite(v) && v >= 0) clean[k] = v;
+  return touch({ ...p, rates: clean });
+}
+
 /** Wipes all rooms, walls, openings and dimensions but keeps plot, floors and settings. */
 export function resetDesign(p: Project): Project {
   return touch({
@@ -201,7 +208,7 @@ export const replaceRooms = (p: Project, floorId: string, rooms: Room[]): Projec
 /* ---------- walls & openings ---------- */
 
 export function generateWalls(p: Project, floorId: string): Project {
-  return mapFloor(p, floorId, (f) => regenerateFloorWalls(f, p.settings.defaultWallThickness));
+  return mapFloor(p, floorId, (f) => regenerateFloorWalls(f, p.settings.defaultWallThickness, p.settings.exteriorWallThickness));
 }
 
 export function addWall(p: Project, floorId: string, x1: number, y1: number, x2: number, y2: number): { project: Project; id: string } {
@@ -267,6 +274,32 @@ export function addOpeningNear(
     height: Math.min(def.height, floor.height),
     sill: def.sill,
   };
+  return { project: mapFloor(p, floorId, (f) => ({ ...f, openings: [...f.openings, opening] })), id: opening.id };
+}
+
+/** Attach an opening centred at `centerAlong` metres from the wall start. Fails (never overlaps or overflows) instead of guessing. */
+export function addOpeningOnWall(
+  p: Project,
+  floorId: string,
+  wallId: string,
+  kind: OpeningKind,
+  centerAlong: number,
+  opts: { width?: number; height?: number; sill?: number } = {},
+): { project: Project; id: string } | { error: string } {
+  const floor = getFloor(p, floorId);
+  const wall = floor?.walls.find((w) => w.id === wallId);
+  if (!floor || !wall) return { error: "Wall not found." };
+  const def = OPENING_DEFAULTS[kind];
+  const width = opts.width ?? def.width;
+  const height = Math.min(opts.height ?? def.height, floor.height);
+  const sill = opts.sill ?? def.sill;
+  const len = wallLength(wall);
+  const margin = 0.1;
+  if (width + 2 * margin > len + TOL) return { error: "The wall is too short for this opening." };
+  const offset = roundMm(Math.min(Math.max(margin, centerAlong - width / 2), len - margin - width));
+  const clash = floor.openings.some((o) => o.wallId === wallId && offset < o.offset + o.width + 0.05 && o.offset < offset + width + 0.05);
+  if (clash) return { error: "That position overlaps another opening." };
+  const opening: Opening = { id: newId(kind === "door" ? "door" : "win"), wallId, kind, offset, width, height, sill };
   return { project: mapFloor(p, floorId, (f) => ({ ...f, openings: [...f.openings, opening] })), id: opening.id };
 }
 

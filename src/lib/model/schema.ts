@@ -80,6 +80,7 @@ export function parseProject(raw: unknown): ParseResult {
     if (isNum(s.gridStep) && s.gridStep > 0) settings.gridStep = s.gridStep;
     if (typeof s.snap === "boolean") settings.snap = s.snap;
     if (isNum(s.defaultWallThickness) && s.defaultWallThickness > 0) settings.defaultWallThickness = s.defaultWallThickness;
+    if (isNum(s.exteriorWallThickness) && s.exteriorWallThickness > 0) settings.exteriorWallThickness = s.exteriorWallThickness;
     if (typeof s.allowOverlap === "boolean") settings.allowOverlap = s.allowOverlap;
     if (typeof s.requireAdjoining === "boolean") settings.requireAdjoining = s.requireAdjoining;
     if (isRec(s.estimate)) {

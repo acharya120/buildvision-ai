@@ -40,29 +40,48 @@ export function openingGeometry(w: Wall, o: Opening) {
 
 const mm = (v: number) => Math.round(v * 1000);
 
-/** Merge overlapping/touching [a,b] intervals. */
-function mergeIntervals(list: Array<[number, number]>): Array<[number, number]> {
-  const sorted = [...list].sort((p, q) => p[0] - q[0]);
-  const out: Array<[number, number]> = [];
-  for (const [a, b] of sorted) {
-    const last = out[out.length - 1];
-    if (last && a <= last[1] + 1) last[1] = Math.max(last[1], b);
-    else out.push([a, b]);
-  }
-  return out;
+interface Side {
+  before: Array<[number, number]>; // intervals (mm) of rooms lying before the line (above / left)
+  after: Array<[number, number]>; // intervals (mm) of rooms lying after the line (below / right)
 }
 
 /**
- * Generate one wall per merged room edge (shared edges become a single wall).
- * Deterministic ids are derived from coordinates so openings can be re-attached.
+ * Split one grid line into wall pieces. A piece with a room on BOTH sides is an interior wall;
+ * a piece with a room on only one side is an exterior wall. Neighbouring pieces of the same class merge.
  */
-export function generateWallsFromRooms(rooms: Room[], thickness: number): Wall[] {
-  const horizontal = new Map<number, Array<[number, number]>>(); // y(mm) -> x intervals (mm)
-  const vertical = new Map<number, Array<[number, number]>>(); // x(mm) -> y intervals (mm)
-  const push = (map: Map<number, Array<[number, number]>>, key: number, a: number, b: number) => {
-    const list = map.get(key) ?? [];
-    list.push([a, b]);
-    map.set(key, list);
+function wallPieces(side: Side): Array<{ a: number; b: number; interior: boolean }> {
+  const pts = [...new Set([...side.before, ...side.after].flatMap(([a, b]) => [a, b]))].sort((p, q) => p - q);
+  const covers = (list: Array<[number, number]>, a: number, b: number) => list.some(([s, e]) => s <= a && e >= b);
+  const pieces: Array<{ a: number; b: number; interior: boolean }> = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const bef = covers(side.before, a, b);
+    const aft = covers(side.after, a, b);
+    if (!bef && !aft) continue;
+    const interior = bef && aft;
+    const last = pieces[pieces.length - 1];
+    if (last && last.b === a && last.interior === interior) last.b = b;
+    else pieces.push({ a, b, interior });
+  }
+  return pieces;
+}
+
+/**
+ * Generate walls along room edges. Edges shared by two rooms become one INTERIOR wall; edges with a
+ * room on one side only become EXTERIOR walls (usually thicker). Wall centre lines sit on the room
+ * edges. Deterministic ids are derived from coordinates so openings can be re-attached.
+ */
+export function generateWallsFromRooms(rooms: Room[], interiorThickness: number, exteriorThickness: number = interiorThickness): Wall[] {
+  const horizontal = new Map<number, Side>(); // y(mm) -> sides
+  const vertical = new Map<number, Side>(); // x(mm) -> sides
+  const get = (map: Map<number, Side>, key: number): Side => {
+    let v = map.get(key);
+    if (!v) {
+      v = { before: [], after: [] };
+      map.set(key, v);
+    }
+    return v;
   };
   for (const r of rooms) {
     if (!isValidRect(r)) continue;
@@ -70,38 +89,20 @@ export function generateWallsFromRooms(rooms: Room[], thickness: number): Wall[]
     const x2 = mm(r.x + r.width);
     const y1 = mm(r.y);
     const y2 = mm(r.y + r.depth);
-    push(horizontal, y1, x1, x2);
-    push(horizontal, y2, x1, x2);
-    push(vertical, x1, y1, y2);
-    push(vertical, x2, y1, y2);
+    get(horizontal, y1).after.push([x1, x2]); // room is below its top edge
+    get(horizontal, y2).before.push([x1, x2]); // room is above its bottom edge
+    get(vertical, x1).after.push([y1, y2]); // room is right of its left edge
+    get(vertical, x2).before.push([y1, y2]); // room is left of its right edge
   }
   const walls: Wall[] = [];
-  const keysH = [...horizontal.keys()].sort((a, b) => a - b);
-  for (const y of keysH) {
-    for (const [a, b] of mergeIntervals(horizontal.get(y)!)) {
-      walls.push({
-        id: `wall_auto_h_${y}_${a}_${b}`,
-        x1: a / 1000,
-        y1: y / 1000,
-        x2: b / 1000,
-        y2: y / 1000,
-        thickness,
-        auto: true,
-      });
+  for (const y of [...horizontal.keys()].sort((a, b) => a - b)) {
+    for (const { a, b, interior } of wallPieces(horizontal.get(y)!)) {
+      walls.push({ id: `wall_auto_h_${y}_${a}_${b}`, x1: a / 1000, y1: y / 1000, x2: b / 1000, y2: y / 1000, thickness: interior ? interiorThickness : exteriorThickness, auto: true });
     }
   }
-  const keysV = [...vertical.keys()].sort((a, b) => a - b);
-  for (const x of keysV) {
-    for (const [a, b] of mergeIntervals(vertical.get(x)!)) {
-      walls.push({
-        id: `wall_auto_v_${x}_${a}_${b}`,
-        x1: x / 1000,
-        y1: a / 1000,
-        x2: x / 1000,
-        y2: b / 1000,
-        thickness,
-        auto: true,
-      });
+  for (const x of [...vertical.keys()].sort((a, b) => a - b)) {
+    for (const { a, b, interior } of wallPieces(vertical.get(x)!)) {
+      walls.push({ id: `wall_auto_v_${x}_${a}_${b}`, x1: x / 1000, y1: a / 1000, x2: x / 1000, y2: b / 1000, thickness: interior ? interiorThickness : exteriorThickness, auto: true });
     }
   }
   return walls;
@@ -121,9 +122,9 @@ export function projectOnWall(w: Wall, p: Pt): { t: number; dist: number } {
  * to whichever new wall now carries their centre point. Openings that no longer sit on any
  * wall keep their old wallId and will be reported by validation (never silently deleted).
  */
-export function regenerateFloorWalls(floor: Floor, thickness: number): Floor {
+export function regenerateFloorWalls(floor: Floor, interiorThickness: number, exteriorThickness: number = interiorThickness): Floor {
   const userWalls = floor.walls.filter((w) => !w.auto);
-  const autoWalls = generateWallsFromRooms(floor.rooms, thickness);
+  const autoWalls = generateWallsFromRooms(floor.rooms, interiorThickness, exteriorThickness);
   const walls = [...autoWalls, ...userWalls];
   const oldById = new Map(floor.walls.map((w) => [w.id, w]));
   const openings = floor.openings.map((o) => {

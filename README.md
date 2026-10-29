@@ -16,8 +16,8 @@ This project was written in an environment where the npm registry was blocked, s
 |---|---|
 | TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
 | TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
-| 63 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
-| Dashboard, plan editor, estimate, drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
+| 76 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
 | SVG plan, elevation and section output | Rendered and inspected visually |
 | 3D viewer (React Three Fiber) | **Not run.** Written against the library APIs but never rendered |
 | PDF export (jsPDF) | **Not run** |
@@ -59,10 +59,17 @@ rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do
 
 **Estimate**: quantities from the model (areas, wall length/area with opening deductions, plaster, paint, masonry volume, assumed slab concrete, door/window counts). **You enter every rate**; no prices are pre-filled. Each line shows quantity, unit, your rate, amount and the calculation basis, labelled Measured / Calculated / Assumption. Foundations, beams, columns, reinforcement and finishes are explicitly listed as *not estimated*.
 
+**Auto design** (new tab, also available when creating a project): a deterministic, rule-based concept generator. Give it floors, bedrooms, optional garage/study/balcony/utility/dining, the street side, your own setbacks, and a room-size preference. It returns up to three layouts built from fixed rules: rooms in bands, a stair and bathroom core at the same place on every floor, a hall where several bedrooms need one, doors so that every room can be entered (checked by a reachability search), a main entrance, and windows on outside walls. Each option is previewed with the normal validator's results, and "Use this design" replaces the current design in one undoable step. If nothing fits (for example after large setbacks) it says so instead of forcing a broken layout. **It is not AI and not an architect:** it knows nothing about orientation, ventilation, structure, fire or local rules, and the stair is only a footprint allocation.
+
+**Realism upgrades**: generated walls are thicker on the outside (default 0.23 m) than inside (0.115 m), room sizes are measured to wall centre-lines, and the validator now also warns about rooms with no door, habitable rooms with no window (only when the floor has windows at all), rooms far below the usual starting size and very long, narrow rooms. These are practical hints, **not code-compliance checks**.
+
+**Estimate rate presets**: save the rates you typed under a name (stored in this browser) and re-apply them to other projects.
+
 **Assistant**: a *rule-based* (not AI) assistant understanding five phrase patterns (add a room to a floor, make a room wider/deeper, change the plot size, total room area, flooring estimate). Changes are previewed with any new problems listed, then applied only on confirmation, and can be undone. A deterministic *auto-arrange* packs rooms into rows with a stated list of limitations.
 
 ## Known limitations
 
+- Auto design fills the buildable rectangle with banded layouts only; it cannot produce L-shapes, courtyards or orientation-aware plans, and its stair is not designed (no rise/going/headroom).
 - Rooms are axis-aligned rectangles. No L-shaped or curved rooms. Walls drawn with the wall tool may be at any angle, but generated walls follow room edges.
 - Plot is a rectangle (no corner or irregular plot outlines yet).
 - Stairs are only a room type (a labelled rectangle); no stair geometry, headroom or flight calculation.
@@ -77,7 +84,7 @@ rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do
 
 1. Run and fix the first real build/lint/test cycle; commit `package-lock.json`.
 2. Pinch-zoom and touch polish on the 2D plan; keyboard nudging of selected rooms.
-3. L-shaped rooms, irregular / corner plots, setbacks as user-entered rules.
+3. L-shaped rooms, irregular / corner plots.
 4. Stair geometry and floor-to-floor opening cut-outs.
 5. Roof types, GLB export, cutaway sections in 3D.
 6. Optional server-side AI assistant (`/api/assistant`) that returns structured edits, validated with the same functions, previewed and undoable.

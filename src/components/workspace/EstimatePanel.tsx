@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildEstimate } from "@/lib/estimate/estimate";
-import { setEstimateAssumptions, setRate } from "@/lib/model/ops";
+import { setEstimateAssumptions, setRate, setRates } from "@/lib/model/ops";
+import { loadPresets, presetFromProject, savePresets, type RatePreset } from "@/lib/storage/ratePresets";
 import { formatArea } from "@/lib/model/units";
 import { estimateCsv } from "@/lib/export/csv";
 import { downloadText, safeFileName } from "@/lib/export/download";
@@ -22,6 +23,10 @@ export default function EstimatePanel() {
   const est = useMemo(() => buildEstimate(project), [project]);
   const cur = project.settings.estimate.currency;
   const sys = project.unitSystem;
+  const [presets, setPresets] = useState<RatePreset[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [presetMsg, setPresetMsg] = useState<string | null>(null);
+  useEffect(() => setPresets(loadPresets()), []);
   const money = (n: number) => `${cur}${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
   return (
@@ -99,6 +104,42 @@ export default function EstimatePanel() {
           </tfoot>
         </table>
       </div>
+      <section className="rounded-lg border border-ink-200 bg-white p-3" aria-label="Rate presets">
+        <h3 className="text-sm font-semibold">Rate presets (saved in this browser only)</h3>
+        <p className="text-xs text-ink-600">Save the rates you typed (for example your contractor&apos;s quote) and re-use them in other projects. No prices are supplied by this app.</p>
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <div className="w-56">
+            <label className="mb-1 block text-xs font-medium text-ink-700" htmlFor="preset-name">Preset name</label>
+            <input id="preset-name" className="w-full rounded-md border border-ink-300 px-2 py-1.5 text-sm" value={presetName} maxLength={60} onChange={(e) => setPresetName(e.target.value)} />
+          </div>
+          <button
+            className="rounded-md border border-ink-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-ink-50 disabled:opacity-50"
+            disabled={!presetName.trim() || Object.keys(project.rates).length === 0}
+            onClick={() => {
+              const next = [...presets.filter((x) => x.name !== presetName.trim()), presetFromProject(presetName, project)];
+              setPresets(next);
+              setPresetMsg(savePresets(next) ? `Saved "${presetName.trim()}".` : "Could not save in this browser.");
+            }}
+          >
+            Save current rates
+          </button>
+        </div>
+        {presetMsg && <p className="mt-1 text-xs text-ink-600" role="status">{presetMsg}</p>}
+        {presets.length > 0 && (
+          <ul className="mt-2 divide-y divide-ink-100 text-sm">
+            {presets.map((x) => (
+              <li key={x.name} className="flex items-center justify-between gap-2 py-1.5">
+                <span>{x.name} <span className="text-xs text-ink-500">({Object.keys(x.rates).length} rates, {x.currency})</span></span>
+                <span className="flex gap-2">
+                  <button className="rounded-md border border-ink-300 px-2 py-1 text-xs hover:bg-ink-50" onClick={() => { ws.commit(setRates(ws.getState().project, x.rates)); setPresetMsg(`Applied "${x.name}". Check the currency symbol in the settings below.`); }}>Apply</button>
+                  <button className="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50" onClick={() => { const next = presets.filter((y) => y.name !== x.name); setPresets(next); savePresets(next); }}>Delete</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <p className="text-xs text-ink-500">Rates are per m², m³ or piece (the unit shown), whichever unit system the project uses. Labels: <strong>Measured</strong> = counted/measured from the model; <strong>Calculated</strong> = geometry arithmetic; <strong>Assumption</strong> = depends on an assumption you can change below.</p>
 
       <section className="rounded-lg border border-ink-200 bg-white p-4" aria-labelledby="assump-h">

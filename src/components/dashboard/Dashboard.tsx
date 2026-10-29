@@ -10,6 +10,7 @@ import { parseProjectJson } from "@/lib/model/schema";
 import { formatPlotArea, parseLength, unitLabel } from "@/lib/model/units";
 import { newId } from "@/lib/model/ids";
 import { deleteProject, duplicateProject, isPersistent, listProjects, saveProject } from "@/lib/storage/local";
+import { applyOption, DEFAULT_AUTODESIGN_INPUT, generateOptions } from "@/lib/layout/autodesign";
 import { btn, btnDanger, btnPrimary, Disclaimer, inputCls, Label } from "../ui/Field";
 
 export default function Dashboard() {
@@ -194,6 +195,8 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
   const [type, setType] = useState<BuildingType>("single-floor");
   const [floors, setFloors] = useState("1");
   const [budget, setBudget] = useState("");
+  const [auto, setAuto] = useState(false);
+  const [beds, setBeds] = useState("2");
   const [errors, setErrors] = useState<string[]>([]);
 
   const submit = (e: React.FormEvent) => {
@@ -211,7 +214,12 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
       if (!name.trim()) errs.push("Enter a project name.");
     }
     if (errs.length || w == null || d == null) return setErrors(errs);
-    const p = createProject({ name, plotWidth: w, plotDepth: d, unitSystem, buildingType: type, floors: floorNum, targetBudget: budgetNum });
+    let p = createProject({ name, plotWidth: w, plotDepth: d, unitSystem, buildingType: type, floors: floorNum, targetBudget: budgetNum });
+    if (auto) {
+      const res = generateOptions(p.plot, { ...DEFAULT_AUTODESIGN_INPUT, floors: floorNum, bedrooms: Number(beds) });
+      if (!res.options.length) return setErrors(res.errors);
+      p = applyOption(p, res.options[0]).project;
+    }
     saveProject(p);
     onCreated(p.id);
   };
@@ -271,6 +279,19 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
           <Label htmlFor="np-budget">Target budget (optional)</Label>
           <input id="np-budget" className={inputCls} inputMode="decimal" value={budget} placeholder="e.g. 2500000" onChange={(e) => setBudget(e.target.value)} />
         </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-ink-200 bg-ink-50 p-3">
+        <label htmlFor="np-auto" className="flex items-center gap-2 text-sm font-medium">
+          <input id="np-auto" type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+          Generate a starting layout automatically (rule-based, not AI)
+        </label>
+        {auto && (
+          <span className="flex items-center gap-2 text-sm">
+            <label htmlFor="np-beds">Bedrooms</label>
+            <input id="np-beds" className="w-16 rounded-md border border-ink-300 px-2 py-1" type="number" min={1} max={5} value={beds} onChange={(e) => setBeds(e.target.value)} />
+            <span className="text-xs text-ink-500">Rooms, walls, doors and windows are created for you to edit. More choices are in the Auto design tab.</span>
+          </span>
+        )}
       </div>
       <p className="mt-2 text-xs text-ink-500">Tip: a 25-gaj plot is about 225 sq ft, for example 15 × 15 ft.</p>
       <div className="mt-4 flex gap-2">

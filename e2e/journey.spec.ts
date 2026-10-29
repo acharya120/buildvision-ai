@@ -47,3 +47,21 @@ test("rejects an invalid plot size with a readable message", async ({ page }) =>
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByRole("alert")).toContainText(/greater than zero|positive number/);
 });
+
+// NOTE: also not yet executed.
+test("auto design generates options and applies one", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "+ New project" }).first().click();
+  await page.getByLabel("Units").selectOption("metric");
+  await page.getByLabel(/Plot width/).fill("9");
+  await page.getByLabel(/Plot depth/).fill("12");
+  await page.getByLabel(/Generate a starting layout/).check();
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/project\//);
+  await page.getByRole("button", { name: "Auto design", exact: true }).click();
+  await page.getByRole("button", { name: "Generate designs" }).click();
+  await expect(page.getByRole("article", { name: "Option A" })).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("article", { name: "Option A" }).getByRole("button", { name: "Use this design" }).click();
+  await expect(page.getByRole("img", { name: /Floor plan of/ })).toBeVisible();
+});

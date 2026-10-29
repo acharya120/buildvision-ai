@@ -9,7 +9,9 @@ import {
   sharedEdgeLength,
   uncoveredArea,
 } from "../geometry/rect";
-import { wallLength } from "../geometry/walls";
+import { wallLength, openingGeometry } from "../geometry/walls";
+import { onBoundary } from "../geometry/adjacency";
+import { DEFAULT_ROOM_SIZES, ROOM_TYPE_LABELS } from "../model/defaults";
 
 /**
  * Reports problems; never changes the design.
@@ -112,6 +114,34 @@ export function validateProject(p: Project): ValidationIssue[] {
           add("error", "opening-overlap", `${label}: two openings overlap on the same wall.`, floor, sorted[i + 1].id);
         }
       }
+    }
+
+
+    // ---- practical (non-regulatory) comfort checks ----
+    const doorsOn = (room: (typeof valid)[number], kind: "door" | "window") =>
+      floor.openings.filter((o) => {
+        if (o.kind !== kind) return false;
+        const w = wallById.get(o.wallId);
+        if (!w) return false;
+        const g = openingGeometry(w, o);
+        return onBoundary(room, { x: (g.p0.x + g.p1.x) / 2, y: (g.p0.y + g.p1.y) / 2 });
+      }).length;
+    const floorHasDoors = floor.openings.some((o) => o.kind === "door");
+    const floorHasWindows = floor.openings.some((o) => o.kind === "window");
+    const habitable = ["living", "bedroom", "master-bedroom", "kitchen", "dining", "study"];
+    for (const r of floor.rooms.filter(isValidRect)) {
+      if (floorHasDoors && doorsOn(r, "door") === 0) add("warning", "room-no-door", `${label}: "${r.name}" has no door, so it cannot be entered.`, floor, r.id);
+      if (floorHasWindows && habitable.includes(r.type) && doorsOn(r, "window") === 0)
+        add("warning", "room-no-window", `${label}: "${r.name}" has no window (no daylight or ventilation modelled).`, floor, r.id);
+      if (r.type !== "custom") {
+        const std = DEFAULT_ROOM_SIZES[r.type];
+        if (r.width * r.depth < 0.6 * std.width * std.depth)
+          add("warning", "room-small", `${label}: "${r.name}" (${(r.width * r.depth).toFixed(1)} m²) is much smaller than the usual starting size for a ${ROOM_TYPE_LABELS[r.type].toLowerCase()} (${(std.width * std.depth).toFixed(1)} m²). Check it is usable.`, floor, r.id);
+      }
+      const longSide = Math.max(r.width, r.depth);
+      const shortSide = Math.min(r.width, r.depth);
+      if (!["staircase", "balcony", "garage", "toilet", "bathroom", "lobby"].includes(r.type) && shortSide < longSide / 3)
+        add("warning", "room-narrow", `${label}: "${r.name}" is very long and narrow (${longSide.toFixed(1)} x ${shortSide.toFixed(1)} m); furniture layout may be difficult.`, floor, r.id);
     }
 
     // ---- walls & dimensions ----

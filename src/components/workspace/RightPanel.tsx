@@ -168,7 +168,9 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
           <NumberField label="Target budget (optional)" value={project.targetBudget} onCommit={(v) => ws.commit(setTargetBudget(cur(), v))} />
           <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={project.settings.snap} onChange={(e) => ws.commit(setSettings(cur(), { snap: e.target.checked }))} /> Snap to grid</label>
           <LengthField label="Grid step" meters={project.settings.gridStep} system={sys} min={0.01} max={2} onCommit={(m) => ws.commit(setSettings(cur(), { gridStep: m }))} />
-          <LengthField label="Default wall thickness" meters={project.settings.defaultWallThickness} system={sys} min={0.05} max={1} onCommit={(m) => ws.commit(setSettings(cur(), { defaultWallThickness: m }))} />
+          <LengthField label="Interior wall thickness" meters={project.settings.defaultWallThickness} system={sys} min={0.05} max={1} onCommit={(m) => ws.commit(setSettings(cur(), { defaultWallThickness: m }))} />
+          <LengthField label="Exterior wall thickness" meters={project.settings.exteriorWallThickness} system={sys} min={0.05} max={1} onCommit={(m) => ws.commit(setSettings(cur(), { exteriorWallThickness: m }))} />
+          <p className="text-xs text-ink-500">Room sizes are measured to wall centre-lines. Thickness changes apply the next time you click Generate walls.</p>
           <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={project.settings.allowOverlap} onChange={(e) => ws.commit(setSettings(cur(), { allowOverlap: e.target.checked }))} /> Allow rooms to overlap</label>
           <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={project.settings.requireAdjoining} onChange={(e) => ws.commit(setSettings(cur(), { requireAdjoining: e.target.checked }))} /> Warn about rooms with no neighbour</label>
           <button

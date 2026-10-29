@@ -112,7 +112,10 @@ export interface EstimateAssumptions {
 export interface BuildingSettings {
   gridStep: number; // m
   snap: boolean;
-  defaultWallThickness: number; // m
+  /** interior wall thickness, m (also used for walls you draw) */
+  defaultWallThickness: number;
+  /** thickness of generated exterior walls, m */
+  exteriorWallThickness: number;
   allowOverlap: boolean;
   /** when true, rooms with no adjoining room are reported as warnings */
   requireAdjoining: boolean;

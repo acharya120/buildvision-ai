@@ -16,10 +16,12 @@ import Viewer3D from "./Viewer3D";
 import EstimatePanel from "./EstimatePanel";
 import DrawingsPanel from "./DrawingsPanel";
 import AssistantPanel from "./AssistantPanel";
+import AutoDesignPanel from "./AutoDesignPanel";
 
-type Tab = "plan" | "3d" | "estimate" | "drawings" | "assistant";
+type Tab = "plan" | "auto" | "3d" | "estimate" | "drawings" | "assistant";
 const TABS: Array<[Tab, string]> = [
   ["plan", "Floor plan"],
+  ["auto", "Auto design"],
   ["3d", "3D view"],
   ["estimate", "Estimate"],
   ["drawings", "Drawings & export"],
@@ -140,6 +142,7 @@ export default function Workspace() {
             </aside>
           </div>
         )}
+        {tab === "auto" && <AutoDesignPanel onApplied={() => setTab("plan")} />}
         {tab === "3d" && <div className="h-full"><Viewer3D /></div>}
         {tab === "estimate" && <EstimatePanel />}
         {tab === "drawings" && <DrawingsPanel />}
