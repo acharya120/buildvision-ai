@@ -16,10 +16,10 @@ This project was written in an environment where the npm registry was blocked, s
 |---|---|
 | TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
 | TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
-| 76 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| 79 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
 | Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
 | SVG plan, elevation and section output | Rendered and inspected visually |
-| 3D viewer (React Three Fiber) | **Not run.** Written against the library APIs but never rendered |
+| 3D viewer (React Three Fiber), including the new stairs, door leaves, furniture and Interior mode | **Not run.** Written against the library APIs but never rendered. Only the stair and furniture geometry is unit-tested (inside the room, sensible step rise) |
 | PDF export (jsPDF) | **Not run** |
 | PNG export, file downloads | **Not run** in a real build |
 | `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e` | **Not run** |
@@ -40,6 +40,7 @@ So the first real build happens on your machine or on Vercel. If it fails, the e
 
 **2D floor-plan editor** (SVG, real coordinates in metres)
 - Plot boundary, grid, scale-correct drawing, pan and zoom (wheel, buttons, Fit).
+- **Add room with exact size**: choose any of the 15 room types (bedroom, balcony, study, etc.), type its name, width and depth, and either place it automatically in free space or give its position. Oversized rooms and full floors give a clear message instead of a silent change; the panel also shows how much of the plot the floor already uses.
 - Add rooms from a library of 15 room types with editable default sizes; select, move (drag), resize (drag corners), rename, delete, and edit width, depth and position numerically. Length boxes accept `12`, `12'6"`, `3.5m`, `350cm`.
 - Draw walls, generate walls from room edges (shared edges merge into one wall), add doors and windows on walls, add dimension lines.
 - Multiple floors: add, remove, rename, set floor height, switch floors, see the floor below as a dashed outline, footprint comparison table.
@@ -49,7 +50,7 @@ So the first real build happens on your machine or on Vercel. If it fails, the e
 **Geometry checks** (never change your design, only report):
 rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do not fit or overlap or have lost their wall, upper-floor overhangs, staircase misalignment, multi-floor building without stairs; optional warning for rooms with no neighbour (off by default, because gaps are often intentional). Errors, warnings and information are shown separately.
 
-**3D view** (built from the same model): orbit/pan/zoom, perspective/top/front presets, reset camera, per-floor visibility, walls (with real door and window gaps), window glass, simple flat roof slab, room labels, wall-height cut-away slider, exploded-floor slider, click a floor slab to select a room.
+**3D view** (built from the same model): orbit/pan/zoom, perspective/top/front presets, reset camera, per-floor visibility, walls (with real door and window gaps), window glass, door leaves, a visual two-flight stair in every staircase room (with an open stairwell in the floor above, so stairs are visible on all floors), optional placeholder furniture by room type, an **Interior (all floors)** mode (roof hidden, walls cut to ~60%, floors separated, furniture on) and an interior camera angle, simple flat roof slab, room labels, wall-height cut-away slider, exploded-floor slider, click a floor slab to select a room.
 
 **Drawings and export**
 - Dimensioned plan SVG with plot dimensions, room sizes/areas, door swings, scale bar, title block, date, units and disclaimer.
@@ -72,7 +73,7 @@ rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do
 - Auto design fills the buildable rectangle with banded layouts only; it cannot produce L-shapes, courtyards or orientation-aware plans, and its stair is not designed (no rise/going/headroom).
 - Rooms are axis-aligned rectangles. No L-shaped or curved rooms. Walls drawn with the wall tool may be at any angle, but generated walls follow room edges.
 - Plot is a rectangle (no corner or irregular plot outlines yet).
-- Stairs are only a room type (a labelled rectangle); no stair geometry, headroom or flight calculation.
+- Stairs are a room type plus a simple visual two-flight stair in 3D; rise, going, headroom and landings are not designed or checked. Furniture is generic placeholder boxes that ignore door positions. Door leaves are drawn closed.
 - No roof design (flat slab only), no site levels, no materials in elevations/sections.
 - Touch screens: single-finger drag works; pinch-zoom on the 2D plan is not implemented (use the +/- buttons). The 3D view uses the library's built-in touch controls.
 - Projects and the room library are stored per browser; clearing browser data deletes them, so download backups.

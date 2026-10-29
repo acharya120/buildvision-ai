@@ -24,6 +24,9 @@ export default function Viewer3D() {
   const [showRoof, setShowRoof] = useState(true);
   const [showWindows, setShowWindows] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
+  const [showDoors, setShowDoors] = useState(true);
+  const [showFurniture, setShowFurniture] = useState(false);
+  const [showStairs, setShowStairs] = useState(true);
   const [preset, setPreset] = useState<CameraPreset>("perspective");
   const [cameraKey, setCameraKey] = useState(0);
 
@@ -38,7 +41,7 @@ export default function Viewer3D() {
         {hasRooms ? (
           <Scene3D
             project={project}
-            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
+            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, showDoors, showFurniture, showStairs, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
             onSelectRoom={(floorId, roomId) => {
               ws.setActiveFloor(floorId);
               ws.select({ kind: "room", id: roomId });
@@ -61,11 +64,27 @@ export default function Viewer3D() {
           </p>
         )}
         <section>
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">View mode</h2>
+          <div className="flex flex-wrap gap-1.5">
+            <button className={btn} onClick={() => { setVisible({}); setWallFactor(1); setExplode(0); setShowRoof(true); setShowFurniture(false); setShowDoors(true); setShowStairs(true); setShowLabels(true); setPreset("perspective"); setCameraKey((k) => k + 1); }}>
+              Exterior
+            </button>
+            <button
+              className={btn}
+              title="Hides the roof, cuts walls to about 60%, separates the floors, and adds stairs, doors and placeholder furniture so every floor's interior can be seen at once"
+              onClick={() => { setVisible({}); setWallFactor(0.6); setExplode(project.floors.length > 1 ? 3 : 0); setShowRoof(false); setShowFurniture(true); setShowDoors(true); setShowStairs(true); setShowWalls(true); setShowLabels(true); setPreset("interior"); setCameraKey((k) => k + 1); }}
+            >
+              Interior (all floors)
+            </button>
+          </div>
+        </section>
+
+        <section>
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Camera</h2>
           <div className="flex flex-wrap gap-1.5">
-            {(["perspective", "top", "front"] as CameraPreset[]).map((p) => (
+            {(["perspective", "top", "front", "interior"] as CameraPreset[]).map((p) => (
               <button key={p} className={`${btn} ${preset === p ? "!border-brand-600 !bg-brand-50 !text-brand-700" : ""}`} aria-pressed={preset === p} onClick={() => { setPreset(p); setCameraKey((k) => k + 1); }}>
-                {p === "perspective" ? "Perspective" : p === "top" ? "Top view" : "Front view"}
+                {p === "perspective" ? "Perspective" : p === "top" ? "Top view" : p === "front" ? "Front view" : "Interior angle"}
               </button>
             ))}
             <button className={btn} onClick={() => setCameraKey((k) => k + 1)}>Reset camera</button>
@@ -86,6 +105,9 @@ export default function Viewer3D() {
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Show</h2>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showWalls} onChange={(e) => setShowWalls(e.target.checked)} /> Walls</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showWindows} onChange={(e) => setShowWindows(e.target.checked)} disabled={!showWalls} /> Window glass</label>
+          <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showStairs} onChange={(e) => setShowStairs(e.target.checked)} /> Stairs (with stairwell openings)</label>
+          <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showDoors} onChange={(e) => setShowDoors(e.target.checked)} disabled={!showWalls} /> Door leaves (closed)</label>
+          <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showFurniture} onChange={(e) => setShowFurniture(e.target.checked)} /> Placeholder furniture</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showRoof} onChange={(e) => setShowRoof(e.target.checked)} /> Flat roof slab (simple)</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} /> Room labels</label>
         </section>
@@ -104,7 +126,7 @@ export default function Viewer3D() {
             <p>{formatLength(selectedRoom.width, sys)} × {formatLength(selectedRoom.depth, sys)} · {formatArea(selectedRoom.width * selectedRoom.depth, sys)}</p>
           </section>
         )}
-        <p className="text-xs text-ink-500">Doors appear as openings in the walls (no door leaves). The roof is a plain flat slab, not a designed roof. This is a visualization of the plan, not a structural model.</p>
+        <p className="text-xs text-ink-500">Stairs are a simple visual two-flight stair, and furniture is generic placeholder boxes; neither is a design. The roof is a plain flat slab. This is a visualization of the plan, not a structural model.</p>
         <Disclaimer compact />
       </aside>
     </div>

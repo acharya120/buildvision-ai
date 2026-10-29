@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import type { RoomType } from "@/lib/model/types";
-import { ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/model/defaults";
-import { addFloor, getFloor, removeFloor, renameFloor, setFloorHeight, totalRoomArea, LIMITS } from "@/lib/model/ops";
+import { ROOM_TYPES, ROOM_TYPE_LABELS, makeRoom } from "@/lib/model/defaults";
+import { addFloor, addRoom, findFreeSpot, getFloor, removeFloor, renameFloor, setFloorHeight, totalRoomArea, LIMITS } from "@/lib/model/ops";
 import { formatArea, formatLength } from "@/lib/model/units";
 import { isValidRect } from "@/lib/geometry/rect";
 import { useWorkspace } from "@/lib/state/store";
 import { defaultLibrary, loadLibrary, saveLibrary, type RoomLibrary } from "@/lib/storage/roomLibrary";
-import { btn, btnDanger, LengthField, TextField } from "../ui/Field";
+import { btn, btnDanger, btnPrimary, inputCls, Label, LengthField, TextField } from "../ui/Field";
 
 export default function LeftPanel() {
   const ws = useWorkspace();
@@ -17,6 +17,38 @@ export default function LeftPanel() {
   const sys = project.unitSystem;
   const [lib, setLib] = useState<RoomLibrary>(defaultLibrary());
   useEffect(() => setLib(loadLibrary()), []);
+
+  // "add a room with exact size" form (works for every room type)
+  const [addType, setAddType] = useState<RoomType>("bedroom");
+  const [addName, setAddName] = useState("");
+  const [addW, setAddW] = useState<number | null>(null);
+  const [addD, setAddD] = useState<number | null>(null);
+  const [addAuto, setAddAuto] = useState(true);
+  const [addX, setAddX] = useState(0);
+  const [addY, setAddY] = useState(0);
+  const [addMsg, setAddMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const addWidth = addW ?? lib[addType].width;
+  const addDepth = addD ?? lib[addType].depth;
+  const used = totalRoomArea(floor);
+  const plotArea = project.plot.width * project.plot.depth;
+
+  const addManual = () => {
+    const cur = ws.getState().project;
+    const fid = ws.getState().activeFloorId;
+    const plot = cur.plot;
+    if (!(addWidth > 0) || !(addDepth > 0)) return setAddMsg({ kind: "error", text: "Width and depth must both be greater than zero." });
+    if (addWidth > plot.width + 1e-6 || addDepth > plot.depth + 1e-6)
+      return setAddMsg({ kind: "error", text: `This room (${formatLength(addWidth, sys)} × ${formatLength(addDepth, sys)}) is bigger than the plot (${formatLength(plot.width, sys)} × ${formatLength(plot.depth, sys)}).` });
+    let pos: { x: number; y: number } | null;
+    if (addAuto) {
+      pos = findFreeSpot(cur, fid, addWidth, addDepth);
+      if (!pos) return setAddMsg({ kind: "error", text: "There is no free space for this size on this floor. Make it smaller, remove a room, or turn off 'place automatically' and enter a position yourself." });
+    } else pos = { x: addX, y: addY };
+    const room = makeRoom(addType, pos.x, pos.y, { width: addWidth, depth: addDepth }, addName.trim() || undefined);
+    ws.commit(addRoom(cur, fid, room));
+    ws.select({ kind: "room", id: room.id });
+    setAddMsg({ kind: "ok", text: `Added ${room.name} (${formatLength(addWidth, sys)} × ${formatLength(addDepth, sys)}) to ${floor.name}. Overlap or boundary problems, if any, appear in the checks.` });
+  };
 
   const updateLib = (type: RoomType, patch: Partial<{ width: number; depth: number }>) => {
     const next = { ...lib, [type]: { ...lib[type], ...patch } };
@@ -68,6 +100,52 @@ export default function LeftPanel() {
               Remove floor
             </button>
           </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="addroom-h" className="rounded-md border border-brand-500 bg-white p-2">
+        <h2 id="addroom-h" className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Add room with exact size</h2>
+        <p className="mb-2 text-xs text-ink-500">
+          For {floor.name}. Rooms here use {formatArea(used, sys)} of the {formatArea(plotArea, sys)} plot ({formatArea(Math.max(0, plotArea - used), sys)} unused). Works for every room type.
+        </p>
+        <div className="space-y-2">
+          <div>
+            <Label htmlFor="add-type">Room type</Label>
+            <select
+              id="add-type"
+              className={inputCls}
+              value={addType}
+              onChange={(e) => {
+                setAddType(e.target.value as RoomType);
+                setAddW(null);
+                setAddD(null);
+                setAddName("");
+              }}
+            >
+              {ROOM_TYPES.map((t) => (
+                <option key={t} value={t}>{ROOM_TYPE_LABELS[t]}</option>
+              ))}
+            </select>
+          </div>
+          <TextField key={`n-${addType}`} label="Name (optional)" value={addName} maxLength={60} onCommit={setAddName} />
+          <div className="grid grid-cols-2 gap-2">
+            <LengthField key={`w-${addType}-${addW ?? "d"}`} label="Width" meters={addWidth} system={sys} min={0.3} max={50} onCommit={(m) => setAddW(m)} />
+            <LengthField key={`d-${addType}-${addD ?? "d"}`} label="Depth" meters={addDepth} system={sys} min={0.3} max={50} onCommit={(m) => setAddD(m)} />
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={addAuto} onChange={(e) => setAddAuto(e.target.checked)} />
+            Place automatically in free space
+          </label>
+          {!addAuto && (
+            <div className="grid grid-cols-2 gap-2">
+              <LengthField label="Position X" meters={addX} system={sys} min={0} max={500} onCommit={setAddX} />
+              <LengthField label="Position Y" meters={addY} system={sys} min={0} max={500} onCommit={setAddY} />
+            </div>
+          )}
+          <button className={btnPrimary} onClick={addManual}>Add {ROOM_TYPE_LABELS[addType].toLowerCase()}</button>
+          {addMsg && (
+            <p role={addMsg.kind === "error" ? "alert" : "status"} className={`text-xs ${addMsg.kind === "error" ? "text-red-700" : "text-emerald-800"}`}>{addMsg.text}</p>
+          )}
         </div>
       </section>
 
