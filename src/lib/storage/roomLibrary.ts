@@ -17,7 +17,7 @@ export function loadLibrary(): RoomLibrary {
     const data = JSON.parse(raw) as Record<string, Partial<RoomDefault>>;
     for (const type of Object.keys(lib) as RoomType[]) {
       const v = data[type];
-      if (v && typeof v.width === "number" && typeof v.depth === "number" && v.width > 0.2 && v.depth > 0.2 && v.width < 100 && v.depth < 100) {
+      if (v && typeof v.width === "number" && typeof v.depth === "number" && v.width > 0.2 && v.depth > 0.2 && v.width < 5000 && v.depth < 5000) {
         lib[type] = { width: v.width, depth: v.depth };
       }
     }

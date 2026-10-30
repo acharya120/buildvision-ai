@@ -19,6 +19,18 @@ export type BuildingType =
   | "bungalow"
   | "villa"
   | "apartment"
+  | "farmhouse"
+  | "shop"
+  | "office"
+  | "restaurant"
+  | "hotel"
+  | "school"
+  | "hospital"
+  | "warehouse"
+  | "factory"
+  | "mall"
+  | "mixed-use"
+  | "community-hall"
   | "custom";
 
 export type RoomType =
@@ -36,6 +48,20 @@ export type RoomType =
   | "lobby"
   | "staircase"
   | "garage"
+  | "office"
+  | "reception"
+  | "meeting-room"
+  | "classroom"
+  | "ward"
+  | "shop"
+  | "hall"
+  | "warehouse"
+  | "workshop"
+  | "laboratory"
+  | "corridor"
+  | "lift"
+  | "parking"
+  | "pantry"
   | "custom";
 
 export interface Plot {

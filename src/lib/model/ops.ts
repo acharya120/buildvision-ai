@@ -29,8 +29,8 @@ export interface NewProjectInput {
 
 export const LIMITS = {
   minPlot: 1.5, // m
-  maxPlot: 200, // m
-  maxFloors: 6,
+  maxPlot: 5000, // m
+  maxFloors: 100,
   maxNameLength: 80,
 };
 
@@ -154,7 +154,7 @@ export const renameFloor = (p: Project, floorId: string, name: string): Project 
   mapFloor(p, floorId, (f) => ({ ...f, name: name.trim() || f.name }));
 
 export const setFloorHeight = (p: Project, floorId: string, height: number): Project =>
-  height >= 2 && height <= 6 ? mapFloor(p, floorId, (f) => ({ ...f, height: roundMm(height) })) : p;
+  height >= 2 && height <= 30 ? mapFloor(p, floorId, (f) => ({ ...f, height: roundMm(height) })) : p;
 
 /* ---------- rooms ---------- */
 

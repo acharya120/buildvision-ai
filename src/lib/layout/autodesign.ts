@@ -51,6 +51,7 @@ export const DEFAULT_AUTODESIGN_INPUT: AutoDesignInput = {
 };
 
 export const AUTODESIGN_LIMITS = { floors: [1, 4], bedrooms: [1, 5] } as const;
+export const COMMERCIAL_LIMITS = { floors: [1, 100] } as const;
 
 export interface OpeningSpec {
   floorIndex: number;
@@ -77,6 +78,8 @@ export interface DesignOption {
   score: number;
   floors: PlannedFloor[];
   openings: OpeningSpec[];
+  /** when set, every floor gets this floor-to-floor height (m) */
+  floorHeight?: number;
   /** building footprint position and size on the plot (metres) */
   footprint: { x: number; y: number; width: number; depth: number };
   builtUpArea: number;
@@ -91,8 +94,8 @@ export interface GenerateResult {
 /* ------------------------------------------------------------------ */
 
 const G = 0.05; // layout grid, m
-const snap = (v: number) => roundMm(Math.round(v / G) * G);
-const sum = (a: number[]) => a.reduce((s, v) => s + v, 0);
+export const snap = (v: number) => roundMm(Math.round(v / G) * G);
+export const sum = (a: number[]) => a.reduce((s, v) => s + v, 0);
 
 interface Item {
   type: RoomType;
@@ -140,7 +143,7 @@ const item = (type: RoomType, name: string, extra: Partial<Item> = {}): Item => 
 });
 
 /** Split `total` into parts proportional to `wants`, none smaller than its minimum, on the layout grid. */
-function splitLengths(total: number, wants: number[], mins: number[]): number[] | null {
+export function splitLengths(total: number, wants: number[], mins: number[]): number[] | null {
   const n = wants.length;
   if (n === 0) return [];
   if (sum(mins) > total + 1e-6) return null;
@@ -198,7 +201,7 @@ function fillBand(items: Item[], x0: number, y0: number, width: number, depth: n
   return rooms;
 }
 
-const mk = (type: RoomType, name: string, x: number, y: number, width: number, depth: number): Room => ({
+export const mk = (type: RoomType, name: string, x: number, y: number, width: number, depth: number): Room => ({
   id: newId("room"),
   name,
   type,
@@ -431,10 +434,12 @@ function doorCost(a: RoomType, b: RoomType): number {
     if (b === "garage" || b === "toilet" || b === "bathroom" || b === "balcony") return 2;
     return Infinity;
   }
-  if (a === "lobby") return b === "garage" ? Infinity : b === "dining" ? 3 : b === "kitchen" ? 4 : 1;
+  if (a === "lobby" || a === "corridor") return b === "garage" ? Infinity : b === "dining" ? 3 : b === "kitchen" ? 4 : b === "corridor" ? 1 : 1;
+  if (a === "reception" || a === "hall") return b === "corridor" || b === "lobby" ? 1 : b === "staircase" || b === "lift" ? 2 : b === "office" || b === "meeting-room" || b === "shop" ? 2 : Infinity;
   if (a === "staircase") {
-    if (b === "lobby") return 1;
-    if (b === "living") return 1;
+    if (b === "lobby" || b === "corridor") return 1;
+    if (b === "living" || b === "reception" || b === "hall") return 1;
+    if (b === "lift") return 2;
     if (bed(b) || b === "study") return 3;
     if (b === "bathroom" || b === "toilet") return 3;
     if (b === "dining" || b === "kitchen") return 4;
@@ -490,7 +495,7 @@ export function planOpenings(floorIndex: number, rooms: Room[], D: number, hasSt
   // ---- doors between rooms (Prim over allowed pairs) ----
   const root =
     floorIndex === 0 || !hasStair
-      ? rooms.find((r) => r.type === "living") ?? rooms.find((r) => r.type === "lobby")
+      ? rooms.find((r) => r.type === "living") ?? rooms.find((r) => r.type === "reception") ?? rooms.find((r) => r.type === "hall") ?? rooms.find((r) => r.type === "lobby") ?? rooms.find((r) => r.type === "corridor")
       : rooms.find((r) => r.type === "staircase");
   const visited = new Set<string>();
   const connected = new Set<string>();
@@ -544,7 +549,7 @@ export function planOpenings(floorIndex: number, rooms: Room[], D: number, hasSt
   const living = rooms.find((r) => r.type === "living");
   if (floorIndex === 0) {
     let placed = false;
-    const entryRooms = [living, ...rooms.filter((r) => r.type === "lobby")].filter((r): r is Room => !!r);
+    const entryRooms = [living, ...rooms.filter((r) => r.type === "reception" || r.type === "hall" || r.type === "lobby" || r.type === "corridor")].filter((r): r is Room => !!r);
     for (const r of entryRooms) {
       const segs = [...front(r)].sort((a, b) => b.to - b.from - (a.to - a.from));
       const all = [...segs, ...exteriorSegments(r, rooms.filter((o) => o.id !== r.id)).filter((s) => !segs.includes(s))];
@@ -571,7 +576,7 @@ export function planOpenings(floorIndex: number, rooms: Room[], D: number, hasSt
   for (const r of rooms) {
     const segs: SideSeg[] = exteriorSegments(r, rooms.filter((o) => o.id !== r.id)).sort((a, b) => b.to - b.from - (a.to - a.from));
     const wet = r.type === "bathroom" || r.type === "toilet";
-    if (["staircase", "lobby", "store", "utility", "garage", "balcony"].includes(r.type)) continue;
+    if (["staircase", "lobby", "store", "utility", "garage", "balcony", "corridor", "lift", "parking"].includes(r.type)) continue;
     let count = 0;
     const want = 1;
     for (const s of segs) {
@@ -763,7 +768,8 @@ export function applyOption(project: Project, option: DesignOption): ApplyResult
   const failed: string[] = [];
   const count = option.floors.length;
   let floors: Floor[] = project.floors.slice(0, count).map((f) => ({ ...f, rooms: [], walls: [], openings: [], dimensions: [] }));
-  while (floors.length < count) floors.push(createFloor(floors.length, project.floors[0]?.height));
+  while (floors.length < count) floors.push(createFloor(floors.length, option.floorHeight ?? project.floors[0]?.height));
+  if (option.floorHeight) floors = floors.map((f) => ({ ...f, height: option.floorHeight as number }));
   let p: Project = { ...project, floors, updatedAt: new Date().toISOString() };
   floors = p.floors;
   option.floors.forEach((pf, i) => {

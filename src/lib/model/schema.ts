@@ -65,7 +65,7 @@ export function parseProject(raw: unknown): ParseResult {
 
   let plot = { width: 0, depth: 0 };
   if (!isRec(root.plot)) err('project: "plot" is missing.');
-  else plot = { width: num(root.plot, "width", "plot", 0.01, 1000), depth: num(root.plot, "depth", "plot", 0.01, 1000) };
+  else plot = { width: num(root.plot, "width", "plot", 0.01, 10000), depth: num(root.plot, "depth", "plot", 0.01, 10000) };
 
   let targetBudget: number | null = null;
   if (root.targetBudget != null) {
@@ -104,7 +104,7 @@ export function parseProject(raw: unknown): ParseResult {
 
   const floors: Floor[] = [];
   if (!Array.isArray(root.floors) || root.floors.length === 0) err('project: "floors" must be a non-empty list.');
-  else if (root.floors.length > 10) err("project: too many floors (maximum 10).");
+  else if (root.floors.length > 100) err("project: too many floors (maximum 100).");
   else {
     root.floors.forEach((rf, fi) => {
       const where = `floors[${fi}]`;
@@ -112,7 +112,7 @@ export function parseProject(raw: unknown): ParseResult {
       const floor: Floor = {
         id: str(rf, "id", where, 64),
         name: str(rf, "name", where, 60),
-        height: num(rf, "height", where, 1, 20),
+        height: num(rf, "height", where, 1, 40),
         rooms: [],
         walls: [],
         openings: [],
@@ -125,7 +125,7 @@ export function parseProject(raw: unknown): ParseResult {
           err(`${where}: "${key}" must be a list.`);
           return [];
         }
-        if (v.length > 2000) {
+        if (v.length > 20000) {
           err(`${where}: "${key}" has too many entries.`);
           return [];
         }

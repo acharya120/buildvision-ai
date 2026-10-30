@@ -10,6 +10,7 @@ import { parseProjectJson } from "@/lib/model/schema";
 import { formatPlotArea, parseLength, unitLabel } from "@/lib/model/units";
 import { newId } from "@/lib/model/ids";
 import { deleteProject, duplicateProject, isPersistent, listProjects, saveProject } from "@/lib/storage/local";
+import { COMMERCIAL_PRESETS, DEFAULT_COMMERCIAL_INPUT, generateCommercialOptions } from "@/lib/layout/autodesignCorridor";
 import { applyOption, DEFAULT_AUTODESIGN_INPUT, generateOptions } from "@/lib/layout/autodesign";
 import { btn, btnDanger, btnPrimary, Disclaimer, inputCls, Label } from "../ui/Field";
 
@@ -215,7 +216,12 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
     }
     if (errs.length || w == null || d == null) return setErrors(errs);
     let p = createProject({ name, plotWidth: w, plotDepth: d, unitSystem, buildingType: type, floors: floorNum, targetBudget: budgetNum });
-    if (auto) {
+    const commercial = !["single-floor", "duplex", "triplex", "bungalow", "villa", "apartment", "farmhouse", "custom"].includes(type);
+    if (auto && commercial) {
+      const res = generateCommercialOptions(p.plot, { ...DEFAULT_COMMERCIAL_INPUT, ...(COMMERCIAL_PRESETS[type] ?? {}), floors: floorNum });
+      if (!res.options.length) return setErrors(res.errors);
+      p = applyOption(p, res.options[0]).project;
+    } else if (auto) {
       const res = generateOptions(p.plot, { ...DEFAULT_AUTODESIGN_INPUT, floors: floorNum, bedrooms: Number(beds) });
       if (!res.options.length) return setErrors(res.errors);
       p = applyOption(p, res.options[0]).project;

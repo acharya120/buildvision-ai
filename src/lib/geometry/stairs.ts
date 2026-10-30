@@ -25,6 +25,8 @@ export function stairBlocks(room: Pick<Room, "x" | "y" | "width" | "depth">, hei
   // number of steps in each flight so that the rise stays near 0.17 m
   let n = Math.max(3, Math.ceil(height / 0.17 / 2) - 1);
   while (n > 3 && flightLen / n < 0.2) n--;
+  // very long flights: add steps (down to a ~0.12 m rise) so the going stays reasonable
+  while (flightLen / n > 0.32 && height / (2 * (n + 1) + 2) >= 0.12) n++;
   const rise = height / (2 * n + 2);
   const gap = Wd >= 1.6 ? 0.1 : 0.05;
   const lane = (Wd - gap) / 2;

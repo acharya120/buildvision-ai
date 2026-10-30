@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { applyOption, AUTODESIGN_LIMITS, DEFAULT_AUTODESIGN_INPUT, generateOptions, type AutoDesignInput, type DesignOption, type Sizing } from "@/lib/layout/autodesign";
+import { COMMERCIAL_PRESETS, DEFAULT_COMMERCIAL_INPUT, generateCommercialOptions, type CommercialInput } from "@/lib/layout/autodesignCorridor";
+import { ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/model/defaults";
+import type { RoomType } from "@/lib/model/types";
 import { planToSvg } from "@/lib/export/svg";
 import { validateProject, countBySeverity } from "@/lib/validation/validate";
 import { useWorkspace } from "@/lib/state/store";
@@ -22,6 +25,11 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
   const [input, setInput] = useState<AutoDesignInput>({ ...DEFAULT_AUTODESIGN_INPUT, floors: project.floors.length });
   const [result, setResult] = useState<{ options: DesignOption[]; errors: string[] } | null>(null);
   const [floorIdx, setFloorIdx] = useState(0);
+  const resid = ["single-floor", "duplex", "triplex", "bungalow", "villa", "apartment", "farmhouse", "custom"].includes(project.buildingType);
+  const [mode, setMode] = useState<"house" | "corridor">(resid ? "house" : "corridor");
+  const [cin, setCin] = useState<CommercialInput>({ ...DEFAULT_COMMERCIAL_INPUT, ...(COMMERCIAL_PRESETS[project.buildingType] ?? {}), floors: project.floors.length });
+  const setC = <K extends keyof CommercialInput>(k: K, v: CommercialInput[K]) => setCin((i) => ({ ...i, [k]: v }));
+  const cnum = (k: "floors" | "roomsPerFloor" | "roomWidth" | "roomDepth" | "floorHeight" | "setbackFront" | "setbackRear" | "setbackSide", v: string) => setC(k, v.trim() === "" ? NaN : Number(v));
   const set = <K extends keyof AutoDesignInput>(k: K, v: AutoDesignInput[K]) => setInput((i) => ({ ...i, [k]: v }));
   const num = (k: "floors" | "bedrooms" | "setbackFront" | "setbackRear" | "setbackSide", v: string) => set(k, v.trim() === "" ? NaN : Number(v));
 
@@ -36,7 +44,7 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
 
   const generate = () => {
     setFloorIdx(0);
-    setResult(generateOptions(project.plot, input));
+    setResult(mode === "house" ? generateOptions(project.plot, input) : generateCommercialOptions(project.plot, cin));
   };
 
   const use = (o: DesignOption) => {
@@ -57,7 +65,34 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
           Generates up to three concept layouts for your plot from fixed layout rules: rooms in bands, a stacked stair and bathroom core, a hall where needed, doors so every room can be entered, and windows on outside walls.
           <strong> It is not AI and not an architect.</strong> It does not know orientation, ventilation or structural rules, local regulations, or your site. Enter your own setbacks. All results are starting points that you can edit.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-3 flex gap-2" role="group" aria-label="Building category">
+          <button className={`${btn} ${mode === "house" ? "ring-2 ring-brand-500" : ""}`} onClick={() => setMode("house")}>House / flat</button>
+          <button className={`${btn} ${mode === "corridor" ? "ring-2 ring-brand-500" : ""}`} onClick={() => setMode("corridor")}>Office, hotel, school, hospital, shop, warehouse…</button>
+        </div>
+        {mode === "corridor" && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <Label htmlFor="c-type">Repeated room type</Label>
+              <select id="c-type" className={inputCls} value={cin.roomType} onChange={(e) => setC("roomType", e.target.value as RoomType)}>
+                {ROOM_TYPES.filter((t) => !["staircase", "lift", "corridor", "toilet", "lobby"].includes(t)).map((t) => <option key={t} value={t}>{ROOM_TYPE_LABELS[t]}</option>)}
+              </select>
+            </div>
+            <div><Label htmlFor="c-fl">Floors (1–100)</Label><input id="c-fl" className={inputCls} type="number" min={1} max={100} value={Number.isNaN(cin.floors) ? "" : cin.floors} onChange={(e) => cnum("floors", e.target.value)} /></div>
+            <div><Label htmlFor="c-n">Rooms per floor (0 = as many as fit)</Label><input id="c-n" className={inputCls} type="number" min={0} max={400} value={Number.isNaN(cin.roomsPerFloor) ? "" : cin.roomsPerFloor} onChange={(e) => cnum("roomsPerFloor", e.target.value)} /></div>
+            <div><Label htmlFor="c-h">Floor height (m)</Label><input id="c-h" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.floorHeight) ? "" : cin.floorHeight} onChange={(e) => cnum("floorHeight", e.target.value)} /></div>
+            <div><Label htmlFor="c-w">Room width (m)</Label><input id="c-w" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.roomWidth) ? "" : cin.roomWidth} onChange={(e) => cnum("roomWidth", e.target.value)} /></div>
+            <div><Label htmlFor="c-d">Room depth (m)</Label><input id="c-d" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.roomDepth) ? "" : cin.roomDepth} onChange={(e) => cnum("roomDepth", e.target.value)} /></div>
+            <div><Label htmlFor="c-sf">Front setback (m)</Label><input id="c-sf" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.setbackFront) ? "" : cin.setbackFront} onChange={(e) => cnum("setbackFront", e.target.value)} /></div>
+            <div><Label htmlFor="c-sr">Rear setback (m)</Label><input id="c-sr" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.setbackRear) ? "" : cin.setbackRear} onChange={(e) => cnum("setbackRear", e.target.value)} /></div>
+            <div><Label htmlFor="c-ss">Side setbacks (m)</Label><input id="c-ss" className={inputCls} inputMode="decimal" value={Number.isNaN(cin.setbackSide) ? "" : cin.setbackSide} onChange={(e) => cnum("setbackSide", e.target.value)} /></div>
+            <div className="space-y-1.5 pt-1">
+              <Check id="c-lift" label="Lift (multi-floor)" checked={cin.includeLift} onChange={(v) => setC("includeLift", v)} />
+              <Check id="c-rec" label="Reception on ground floor" checked={cin.groundReception} onChange={(v) => setC("groundReception", v)} />
+            </div>
+            <p className="text-xs text-ink-500 sm:col-span-2 lg:col-span-4">Layout: a corridor with a row of rooms on each side, stair, lift and toilets at one end. No fire-exit, accessibility or code rules are applied; those need a professional.</p>
+          </div>
+        )}
+        <div className={`mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 ${mode === "corridor" ? "hidden" : ""}`}>
           <div>
             <Label htmlFor="ad-floors">Floors ({AUTODESIGN_LIMITS.floors[0]}–{AUTODESIGN_LIMITS.floors[1]})</Label>
             <input id="ad-floors" className={inputCls} type="number" min={1} max={4} value={Number.isNaN(input.floors) ? "" : input.floors} onChange={(e) => num("floors", e.target.value)} />

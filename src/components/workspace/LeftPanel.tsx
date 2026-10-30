@@ -75,7 +75,7 @@ export default function LeftPanel() {
         </ul>
         <div className="mt-2 space-y-2 rounded-md border border-ink-200 bg-white p-2">
           <TextField label="Selected floor name" value={floor.name} onCommit={(v) => ws.commit(renameFloor(ws.getState().project, floor.id, v))} />
-          <LengthField label="Floor-to-floor height" meters={floor.height} system={sys} min={2} max={6} onCommit={(m) => ws.commit(setFloorHeight(ws.getState().project, floor.id, m))} />
+          <LengthField label="Floor-to-floor height" meters={floor.height} system={sys} min={2} max={30} onCommit={(m) => ws.commit(setFloorHeight(ws.getState().project, floor.id, m))} />
           <div className="flex gap-2">
             <button
               className={btn}
@@ -129,8 +129,8 @@ export default function LeftPanel() {
           </div>
           <TextField key={`n-${addType}`} label="Name (optional)" value={addName} maxLength={60} onCommit={setAddName} />
           <div className="grid grid-cols-2 gap-2">
-            <LengthField key={`w-${addType}-${addW ?? "d"}`} label="Width" meters={addWidth} system={sys} min={0.3} max={50} onCommit={(m) => setAddW(m)} />
-            <LengthField key={`d-${addType}-${addD ?? "d"}`} label="Depth" meters={addDepth} system={sys} min={0.3} max={50} onCommit={(m) => setAddD(m)} />
+            <LengthField key={`w-${addType}-${addW ?? "d"}`} label="Width" meters={addWidth} system={sys} min={0.3} max={5000} onCommit={(m) => setAddW(m)} />
+            <LengthField key={`d-${addType}-${addD ?? "d"}`} label="Depth" meters={addDepth} system={sys} min={0.3} max={5000} onCommit={(m) => setAddD(m)} />
           </div>
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={addAuto} onChange={(e) => setAddAuto(e.target.checked)} />
@@ -138,8 +138,8 @@ export default function LeftPanel() {
           </label>
           {!addAuto && (
             <div className="grid grid-cols-2 gap-2">
-              <LengthField label="Position X" meters={addX} system={sys} min={0} max={500} onCommit={setAddX} />
-              <LengthField label="Position Y" meters={addY} system={sys} min={0} max={500} onCommit={setAddY} />
+              <LengthField label="Position X" meters={addX} system={sys} min={0} max={10000} onCommit={setAddX} />
+              <LengthField label="Position Y" meters={addY} system={sys} min={0} max={10000} onCommit={setAddY} />
             </div>
           )}
           <button className={btnPrimary} onClick={addManual}>Add {ROOM_TYPE_LABELS[addType].toLowerCase()}</button>
@@ -175,8 +175,8 @@ export default function LeftPanel() {
               <div key={t}>
                 <p className="mb-1 text-xs font-semibold">{ROOM_TYPE_LABELS[t]}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <LengthField label="Width" meters={lib[t].width} system={sys} min={0.3} max={50} onCommit={(m) => updateLib(t, { width: m })} />
-                  <LengthField label="Depth" meters={lib[t].depth} system={sys} min={0.3} max={50} onCommit={(m) => updateLib(t, { depth: m })} />
+                  <LengthField label="Width" meters={lib[t].width} system={sys} min={0.3} max={5000} onCommit={(m) => updateLib(t, { width: m })} />
+                  <LengthField label="Depth" meters={lib[t].depth} system={sys} min={0.3} max={5000} onCommit={(m) => updateLib(t, { depth: m })} />
                 </div>
               </div>
             ))}

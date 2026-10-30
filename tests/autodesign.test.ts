@@ -117,3 +117,36 @@ describe("realism helpers", () => {
     expect("error" in addOpeningOnWall(p, fid, top.id, "door", 2, { width: 9 })).toBe(true);
   });
 });
+
+import { COMMERCIAL_PRESETS, DEFAULT_COMMERCIAL_INPUT, generateCommercialOptions } from "@/lib/layout/autodesignCorridor";
+
+describe("auto design: corridor buildings", () => {
+  const cases: Array<[string, number, number, Record<string, unknown>]> = [
+    ["office 30x25 4 floors", 30, 25, COMMERCIAL_PRESETS.office],
+    ["hotel 40x20 5 floors 12 rooms", 40, 20, { ...COMMERCIAL_PRESETS.hotel, floors: 5, roomsPerFloor: 12 }],
+    ["school 60x40", 60, 40, COMMERCIAL_PRESETS.school],
+    ["hospital 50x40 6 floors", 50, 40, { ...COMMERCIAL_PRESETS.hospital, floors: 6 }],
+    ["warehouse 80x60", 80, 60, COMMERCIAL_PRESETS.warehouse],
+    ["20 floor tower", 40, 40, { floors: 20 }],
+  ];
+  for (const [name, w, d, inp] of cases) {
+    it(`${name}: no errors, every room reachable, aligned stairs`, () => {
+      const input = { ...DEFAULT_COMMERCIAL_INPUT, ...inp } as typeof DEFAULT_COMMERCIAL_INPUT;
+      const res = generateCommercialOptions({ width: w, depth: d }, input);
+      expect(res.errors).toEqual([]);
+      const o = res.options[0];
+      const { project, failed } = applyOption(blank(w, d, input.floors), o);
+      expect(failed).toEqual([]);
+      const issues = validateProject(project);
+      expect(countBySeverity(issues).error).toBe(0);
+      expect(issues.filter((i) => i.code === "room-no-door")).toEqual([]);
+      expect(project.floors.length).toBe(input.floors);
+      expect(project.floors[0].height).toBe(input.floorHeight);
+    });
+  }
+  it("explains why nothing fits", () => {
+    const r = generateCommercialOptions({ width: 6, depth: 6 }, DEFAULT_COMMERCIAL_INPUT);
+    expect(r.options).toEqual([]);
+    expect(r.errors.length).toBe(1);
+  });
+});

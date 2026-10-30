@@ -61,10 +61,10 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <LengthField label="Width" meters={room.width} system={sys} min={0.1} max={200} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { width: m }))} />
-              <LengthField label="Depth" meters={room.depth} system={sys} min={0.1} max={200} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { depth: m }))} />
-              <LengthField label="Position X" meters={room.x} system={sys} min={0} max={1000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { x: m }))} />
-              <LengthField label="Position Y" meters={room.y} system={sys} min={0} max={1000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { y: m }))} />
+              <LengthField label="Width" meters={room.width} system={sys} min={0.1} max={5000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { width: m }))} />
+              <LengthField label="Depth" meters={room.depth} system={sys} min={0.1} max={5000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { depth: m }))} />
+              <LengthField label="Position X" meters={room.x} system={sys} min={0} max={10000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { x: m }))} />
+              <LengthField label="Position Y" meters={room.y} system={sys} min={0} max={10000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { y: m }))} />
             </div>
             <p className="text-xs text-ink-600">Area: <strong>{formatArea(room.width * room.depth, sys)}</strong></p>
             <button className={btnDanger} onClick={() => { ws.commit(deleteRoom(cur(), floor.id, room.id)); ws.select(null); }}>Delete room</button>
@@ -74,7 +74,7 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
         {wall && (
           <div className="space-y-2 rounded-md border border-ink-200 bg-white p-2">
             <p className="text-xs text-ink-600">{wall.auto ? "Generated wall (from room edges)" : "Drawn wall"} · length <strong>{formatLength(wallLength(wall), sys)}</strong></p>
-            <LengthField label="Thickness" meters={wall.thickness} system={sys} min={0.05} max={1} onCommit={(m) => ws.commit(updateWall(cur(), floor.id, wall.id, { thickness: m }))} />
+            <LengthField label="Thickness" meters={wall.thickness} system={sys} min={0.05} max={3} onCommit={(m) => ws.commit(updateWall(cur(), floor.id, wall.id, { thickness: m }))} />
             {!wall.auto && (
               <div className="grid grid-cols-2 gap-2">
                 <LengthField label="Start X" meters={wall.x1} system={sys} min={0} onCommit={(m) => ws.commit(updateWall(cur(), floor.id, wall.id, { x1: m }))} />
@@ -91,10 +91,10 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
           <div className="space-y-2 rounded-md border border-ink-200 bg-white p-2">
             <p className="text-xs font-semibold">{opening.kind === "door" ? "Door" : "Window"}</p>
             <div className="grid grid-cols-2 gap-2">
-              <LengthField label="Width" meters={opening.width} system={sys} min={0.1} max={10} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { width: m }))} />
-              <LengthField label="Height" meters={opening.height} system={sys} min={0.1} max={6} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { height: m }))} />
-              <LengthField label="Sill height" meters={opening.sill} system={sys} min={0} max={6} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { sill: m }))} />
-              <LengthField label="From wall start" meters={opening.offset} system={sys} min={0} max={200} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { offset: m }))} />
+              <LengthField label="Width" meters={opening.width} system={sys} min={0.1} max={50} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { width: m }))} />
+              <LengthField label="Height" meters={opening.height} system={sys} min={0.1} max={20} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { height: m }))} />
+              <LengthField label="Sill height" meters={opening.sill} system={sys} min={0} max={20} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { sill: m }))} />
+              <LengthField label="From wall start" meters={opening.offset} system={sys} min={0} max={5000} onCommit={(m) => ws.commit(updateOpening(cur(), floor.id, opening.id, { offset: m }))} />
             </div>
             <button className={btnDanger} onClick={() => { ws.commit(deleteOpening(cur(), floor.id, opening.id)); ws.select(null); }}>Delete {opening.kind}</button>
           </div>
@@ -148,8 +148,8 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
         <h2 id="proj-h" className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Project settings</h2>
         <div className="space-y-2 rounded-md border border-ink-200 bg-white p-2">
           <div className="grid grid-cols-2 gap-2">
-            <LengthField label="Plot width" meters={project.plot.width} system={sys} min={1.5} max={200} onCommit={(m) => ws.commit(setPlot(cur(), m, cur().plot.depth))} />
-            <LengthField label="Plot depth" meters={project.plot.depth} system={sys} min={1.5} max={200} onCommit={(m) => ws.commit(setPlot(cur(), cur().plot.width, m))} />
+            <LengthField label="Plot width" meters={project.plot.width} system={sys} min={1.5} max={5000} onCommit={(m) => ws.commit(setPlot(cur(), m, cur().plot.depth))} />
+            <LengthField label="Plot depth" meters={project.plot.depth} system={sys} min={1.5} max={5000} onCommit={(m) => ws.commit(setPlot(cur(), cur().plot.width, m))} />
           </div>
           <p className="text-xs text-ink-500">{formatPlotArea(project.plot.width * project.plot.depth)}. Changing the plot never moves rooms; anything outside is flagged above.</p>
           <div>

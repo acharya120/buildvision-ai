@@ -50,7 +50,7 @@ describe("project creation & input validation", () => {
     expect(validateNewProject(ok)).toEqual([]);
     expect(validateNewProject({ ...ok, plotWidth: 0 })[0]).toMatch(/greater than zero/);
     expect(validateNewProject({ ...ok, plotDepth: -2 })[0]).toMatch(/greater than zero/);
-    expect(validateNewProject({ ...ok, plotWidth: 5000 })[0]).toMatch(/unreasonably large/);
+    expect(validateNewProject({ ...ok, plotWidth: 6000 })[0]).toMatch(/unreasonably large/);
     expect(validateNewProject({ ...ok, plotWidth: NaN })[0]).toMatch(/must be a number/);
     expect(validateNewProject({ ...ok, name: "  " })[0]).toMatch(/project name/i);
     expect(validateNewProject({ ...ok, floors: 0 }).length).toBe(1);

@@ -128,7 +128,7 @@ export function validateProject(p: Project): ValidationIssue[] {
       }).length;
     const floorHasDoors = floor.openings.some((o) => o.kind === "door");
     const floorHasWindows = floor.openings.some((o) => o.kind === "window");
-    const habitable = ["living", "bedroom", "master-bedroom", "kitchen", "dining", "study"];
+    const habitable = ["living", "bedroom", "master-bedroom", "kitchen", "dining", "study", "office", "reception", "meeting-room", "classroom", "ward", "shop", "hall", "laboratory", "workshop"];
     for (const r of floor.rooms.filter(isValidRect)) {
       if (floorHasDoors && doorsOn(r, "door") === 0) add("warning", "room-no-door", `${label}: "${r.name}" has no door, so it cannot be entered.`, floor, r.id);
       if (floorHasWindows && habitable.includes(r.type) && doorsOn(r, "window") === 0)
@@ -140,7 +140,7 @@ export function validateProject(p: Project): ValidationIssue[] {
       }
       const longSide = Math.max(r.width, r.depth);
       const shortSide = Math.min(r.width, r.depth);
-      if (!["staircase", "balcony", "garage", "toilet", "bathroom", "lobby"].includes(r.type) && shortSide < longSide / 3)
+      if (!["staircase", "balcony", "garage", "toilet", "bathroom", "lobby", "corridor", "lift", "parking", "pantry", "warehouse", "hall", "classroom", "workshop", "shop"].includes(r.type) && shortSide < longSide / 3)
         add("warning", "room-narrow", `${label}: "${r.name}" is very long and narrow (${longSide.toFixed(1)} x ${shortSide.toFixed(1)} m); furniture layout may be difficult.`, floor, r.id);
     }
 
