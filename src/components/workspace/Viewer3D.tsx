@@ -1,11 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWorkspace } from "@/lib/state/store";
 import { formatArea, formatLength } from "@/lib/model/units";
 import { btn, Disclaimer } from "../ui/Field";
+import { DEFAULT_THEME, THEME_FIELDS, THEME_PRESETS, sanitizeTheme, type Theme3D } from "@/lib/geometry/theme3d";
 import type { CameraPreset } from "./Scene3D";
+
+const THEME_KEY = "buildvision.theme3d";
 
 // three.js needs the browser, so the scene is loaded on the client only
 const Scene3D = dynamic(() => import("./Scene3D"), {
@@ -30,6 +33,25 @@ export default function Viewer3D() {
   const [showSite, setShowSite] = useState(true);
   const [preset, setPreset] = useState<CameraPreset>("perspective");
   const [cameraKey, setCameraKey] = useState(0);
+  const [theme, setTheme] = useState<Theme3D>(DEFAULT_THEME);
+
+  // remember the chosen colours in this browser (optional; ignored when storage is blocked)
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(THEME_KEY);
+      if (raw) setTheme(sanitizeTheme(JSON.parse(raw)));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const changeTheme = (t: Theme3D) => {
+    setTheme(t);
+    try {
+      window.localStorage.setItem(THEME_KEY, JSON.stringify(t));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const hasRooms = project.floors.some((f) => f.rooms.length > 0);
   const selectedRoom =
@@ -42,7 +64,7 @@ export default function Viewer3D() {
         {hasRooms ? (
           <Scene3D
             project={project}
-            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, showDoors, showFurniture, showStairs, showSite, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
+            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, showDoors, showFurniture, showStairs, showSite, theme, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
             onSelectRoom={(floorId, roomId) => {
               ws.setActiveFloor(floorId);
               ws.select({ kind: "room", id: roomId });
@@ -81,6 +103,31 @@ export default function Viewer3D() {
         </section>
 
         <section>
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Colours and style</h2>
+          <div className="grid grid-cols-2 gap-1.5">
+            {THEME_PRESETS.map((p) => (
+              <button key={p.key} type="button" className={`${btn} justify-start gap-1.5 !px-2 text-xs`} onClick={() => changeTheme(p.theme)} title={`Use the "${p.label}" colours`}>
+                <span aria-hidden className="inline-flex overflow-hidden rounded-full border border-ink-200">
+                  <span className="h-3 w-3" style={{ background: p.theme.wall }} />
+                  <span className="h-3 w-3" style={{ background: p.theme.roof }} />
+                  <span className="h-3 w-3" style={{ background: p.theme.lawn }} />
+                </span>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+            {THEME_FIELDS.map(([key, label]) => (
+              <label key={key} className="flex items-center justify-between gap-2 text-xs text-ink-600">
+                {label}
+                <input type="color" aria-label={`${label} colour`} className="h-7 w-10 cursor-pointer rounded border border-ink-200 bg-white p-0.5" value={theme[key]} onChange={(e) => changeTheme({ ...theme, [key]: e.target.value })} />
+              </label>
+            ))}
+          </div>
+          <button type="button" className={`${btn} mt-2`} onClick={() => changeTheme(DEFAULT_THEME)}>Reset colours</button>
+        </section>
+
+        <section>
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Camera</h2>
           <div className="flex flex-wrap gap-1.5">
             {(["perspective", "top", "front", "interior"] as CameraPreset[]).map((p) => (
@@ -110,7 +157,7 @@ export default function Viewer3D() {
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showStairs} onChange={(e) => setShowStairs(e.target.checked)} /> Stairs (with stairwell openings)</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showDoors} onChange={(e) => setShowDoors(e.target.checked)} disabled={!showWalls} /> Door leaves (closed)</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showFurniture} onChange={(e) => setShowFurniture(e.target.checked)} /> Placeholder furniture</label>
-          <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showRoof} onChange={(e) => setShowRoof(e.target.checked)} /> Flat roof slab (simple)</label>
+          <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showRoof} onChange={(e) => setShowRoof(e.target.checked)} /> Roof (hip roof when the top floor is a rectangle)</label>
           <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} /> Room labels</label>
         </section>
 
@@ -128,7 +175,7 @@ export default function Viewer3D() {
             <p>{formatLength(selectedRoom.width, sys)} × {formatLength(selectedRoom.depth, sys)} · {formatArea(selectedRoom.width * selectedRoom.depth, sys)}</p>
           </section>
         )}
-        <p className="text-xs text-ink-500">Stairs are a simple visual two-flight stair, and furniture is generic placeholder boxes; neither is a design. The roof is a plain flat slab. This is a visualization of the plan, not a structural model.</p>
+        <p className="text-xs text-ink-500">Stairs are a simple visual two-flight stair, and furniture is generic placeholder boxes; neither is a design. Trees, shrubs, the road and the roof are simple visual shapes. This is a visualization of the plan, not a structural model.</p>
         <Disclaimer compact />
       </aside>
     </div>

@@ -11,6 +11,12 @@ import { floorElevations } from "@/lib/export/drawings";
 import { buildSite } from "@/lib/site/site";
 import { stairBlocks } from "@/lib/geometry/stairs";
 import { furnitureFor } from "@/lib/geometry/furniture";
+import type { Theme3D } from "@/lib/geometry/theme3d";
+import { footprintFill, hipRoofPositions, pillarPositions, roadAlong, shrubPositions } from "@/lib/geometry/landscape";
+
+const SHRUB_TONES = ["#3f8f3a", "#4fa046", "#2f7d35"];
+const FLOWERS = ["#e45b9b", "#f4c542", "#a56fd8", "#ff7a59"];
+const TREE_TONES = ["#3f9a43", "#4aa84e", "#37893c"];
 
 export type CameraPreset = "perspective" | "top" | "front" | "interior";
 
@@ -26,6 +32,7 @@ export interface SceneOptions {
   showFurniture: boolean;
   showStairs: boolean;
   showSite: boolean;
+  theme: Theme3D;
   selectedRoomId: string | null;
   preset: CameraPreset;
   cameraKey: number;
@@ -59,58 +66,166 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
 
   const site = useMemo(() => (options.showSite ? buildSite(project) : null), [project, options.showSite]);
   const topIndex = project.floors.reduce((acc, f, i) => (options.visible[f.id] !== false ? i : acc), -1);
+  const theme = options.theme;
+  // shadows look great but cost a lot, so very large buildings are drawn without them
+  const heavy = project.floors.reduce((n, f) => n + f.rooms.length, 0) > 120;
+
+  // roof: a hip roof when the top floor is (almost) a rectangle, otherwise a plain slab per room
+  const roofInfo = useMemo(() => {
+    if (topIndex < 0) return null;
+    const f = project.floors[topIndex];
+    const fp = footprintFill(f.rooms.filter(isValidRect));
+    if (!fp) return null;
+    return { box: fp.box, hip: fp.fill >= 0.85 ? hipRoofPositions(fp.box, f.height) : null };
+  }, [project, topIndex]);
+  const shrubs = useMemo(() => (site ? shrubPositions(site.wall, plot) : []), [site, plot]);
+  const pillars = useMemo(() => (site ? pillarPositions(site.wall) : []), [site]);
+  const frontSide = site?.gates.find((g) => g.kind === "entrance")?.side ?? "bottom";
+  const road = useMemo(() => (site ? roadAlong(frontSide, plot, Math.max(20, size * 0.4)) : null), [site, frontSide, plot, size]);
 
   return (
-    <Canvas key={`${options.preset}-${options.cameraKey}`} camera={{ position: camera, fov: 45, near: 0.1, far: 2000 }} style={{ background: "#e9eef5" }}>
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[cx + size, size * 2, cz + size * 0.5]} intensity={1.1} />
-      <directionalLight position={[cx - size, size, cz - size]} intensity={0.35} />
+    <Canvas
+      key={`${options.preset}-${options.cameraKey}`}
+      shadows={!heavy}
+      dpr={[1, 2]}
+      camera={{ position: camera, fov: 45, near: 0.1, far: 4000 }}
+      style={{ background: `linear-gradient(180deg, ${theme.sky} 0%, #ffffff 100%)` }}
+    >
+      <ambientLight intensity={0.5} />
+      <hemisphereLight args={["#ffffff", "#b9d9a8", 0.55]} />
+      <directionalLight
+        position={[cx + size, size * 2, cz + size * 0.5]}
+        intensity={1.15}
+        castShadow={!heavy}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-size * 1.8}
+        shadow-camera-right={size * 1.8}
+        shadow-camera-top={size * 1.8}
+        shadow-camera-bottom={-size * 1.8}
+        shadow-camera-near={1}
+        shadow-camera-far={size * 8}
+        shadow-bias={-0.0004}
+      />
+      <directionalLight position={[cx - size, size, cz - size]} intensity={0.3} />
       <OrbitControls makeDefault enableDamping target={[cx, totalH / 3, cz]} maxPolarAngle={Math.PI / 2 + 0.05} />
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.2, cz]}>
-        <planeGeometry args={[plot.width, plot.depth]} />
-        <meshStandardMaterial color={site?.options.lawn === false ? "#d9d4c8" : "#bfe0b8"} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.26, cz]}>
+        <planeGeometry args={[size * 10, size * 10]} />
+        <meshStandardMaterial color={theme.ground} />
       </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.2, cz]} receiveShadow>
+        <planeGeometry args={[plot.width, plot.depth]} />
+        <meshStandardMaterial color={site?.options.lawn === false ? "#d9d4c8" : theme.lawn} />
+      </mesh>
+      {site && road && (
+        <group>
+          <mesh position={[road.pave.cx, -0.2, road.pave.cz]} receiveShadow>
+            <boxGeometry args={[road.pave.w, 0.1, road.pave.d]} />
+            <meshStandardMaterial color="#cfcac0" />
+          </mesh>
+          <mesh position={[road.road.cx, -0.23, road.road.cz]} receiveShadow>
+            <boxGeometry args={[road.road.w, 0.06, road.road.d]} />
+            <meshStandardMaterial color={theme.road} />
+          </mesh>
+          {road.dashes.map((d, i) => (
+            <mesh key={`dash-${i}`} position={[d.x, -0.19, d.z]}>
+              <boxGeometry args={[d.w, 0.02, d.d]} />
+              <meshStandardMaterial color="#ffffff" />
+            </mesh>
+          ))}
+        </group>
+      )}
       {site && (
         <group>
           {site.paths.map((r, i) => (
-            <mesh key={`path-${i}`} position={[r.x + r.width / 2, -0.17, r.y + r.depth / 2]}>
+            <mesh key={`path-${i}`} position={[r.x + r.width / 2, -0.17, r.y + r.depth / 2]} receiveShadow>
               <boxGeometry args={[r.width, 0.06, r.depth]} />
-              <meshStandardMaterial color="#cfc8bc" />
+              <meshStandardMaterial color="#d6d0c4" />
             </mesh>
           ))}
-          {site.wall.map((r, i) => (
-            <mesh key={`bw-${i}`} position={[r.x + r.width / 2, 0.8, r.y + r.depth / 2]}>
-              <boxGeometry args={[r.width, 1.8, r.depth]} />
-              <meshStandardMaterial color="#8b8478" />
-            </mesh>
+          {site.wall.map((r, i) => {
+            const horiz = r.width >= r.depth;
+            return (
+              <group key={`bw-${i}`}>
+                <mesh position={[r.x + r.width / 2, 0.8, r.y + r.depth / 2]} castShadow receiveShadow>
+                  <boxGeometry args={[r.width, 1.8, r.depth]} />
+                  <meshStandardMaterial color={theme.boundary} />
+                </mesh>
+                <mesh position={[r.x + r.width / 2, 1.75, r.y + r.depth / 2]}>
+                  <boxGeometry args={[r.width + (horiz ? 0 : 0.1), 0.1, r.depth + (horiz ? 0.1 : 0)]} />
+                  <meshStandardMaterial color={theme.trim} />
+                </mesh>
+              </group>
+            );
+          })}
+          {pillars.map((p, i) => (
+            <group key={`pillar-${i}`} position={[p.x, 0, p.z]}>
+              <mesh position={[0, 0.85, 0]} castShadow>
+                <boxGeometry args={[0.42, 2.1, 0.42]} />
+                <meshStandardMaterial color={theme.boundary} />
+              </mesh>
+              <mesh position={[0, 1.95, 0]}>
+                <boxGeometry args={[0.52, 0.1, 0.52]} />
+                <meshStandardMaterial color={theme.trim} />
+              </mesh>
+            </group>
+          ))}
+          {shrubs.map((b, i) => (
+            <group key={`shrub-${i}`} position={[b.x, -0.2, b.z]}>
+              <mesh position={[0, b.r * 0.7, 0]} scale={[1, 0.8, 1]} castShadow>
+                <sphereGeometry args={[b.r, 8, 6]} />
+                <meshStandardMaterial color={SHRUB_TONES[b.tone]} />
+              </mesh>
+              {b.flower !== null && (
+                <mesh position={[b.r * 0.3, b.r * 1.3, 0]}>
+                  <sphereGeometry args={[0.1, 6, 5]} />
+                  <meshStandardMaterial color={FLOWERS[b.flower]} />
+                </mesh>
+              )}
+            </group>
           ))}
           {site.trees.map((t, i) => (
             <group key={`tree-${i}`} position={[t.x, -0.2, t.y]}>
-              <mesh position={[0, t.r * 1.1, 0]}>
+              <mesh position={[0, t.r * 1.1, 0]} castShadow>
                 <cylinderGeometry args={[Math.max(0.08, t.r * 0.12), Math.max(0.1, t.r * 0.16), t.r * 2.2, 8]} />
                 <meshStandardMaterial color="#6b4a2b" />
               </mesh>
-              <mesh position={[0, t.r * 2.6, 0]}>
-                <sphereGeometry args={[t.r * 1.5, 14, 12]} />
-                <meshStandardMaterial color="#4f9a4a" />
+              <mesh position={[0, t.r * 2.7, 0]} castShadow>
+                <sphereGeometry args={[t.r * 1.45, 14, 12]} />
+                <meshStandardMaterial color={TREE_TONES[i % 3]} />
+              </mesh>
+              <mesh position={[t.r * 0.55, t.r * 3.3, t.r * 0.2]} castShadow>
+                <sphereGeometry args={[t.r * 1.0, 12, 10]} />
+                <meshStandardMaterial color={TREE_TONES[(i + 1) % 3]} />
+              </mesh>
+              <mesh position={[-t.r * 0.5, t.r * 2.2, -t.r * 0.35]} castShadow>
+                <sphereGeometry args={[t.r * 0.95, 12, 10]} />
+                <meshStandardMaterial color={TREE_TONES[(i + 2) % 3]} />
               </mesh>
             </group>
           ))}
           {site.gates.map((g, i) => {
             const horiz = g.side === "top" || g.side === "bottom";
-            const half = g.width / 2;
-            const post = (dx: number, dz: number, k: string) => (
-              <mesh key={k} position={[g.x + dx, 0.95, g.y + dz]}>
-                <boxGeometry args={[0.3, 2.3, 0.3]} />
-                <meshStandardMaterial color={g.kind === "entrance" ? "#15803d" : "#b45309"} />
-              </mesh>
-            );
+            const bars = Math.max(4, Math.min(40, Math.floor(g.width / 0.3)));
+            const leafW = g.width * 0.94;
             return (
-              <group key={`gate-${i}`}>
-                {horiz ? [post(-half, 0, "a"), post(half, 0, "b")] : [post(0, -half, "a"), post(0, half, "b")]}
+              <group key={`gate-${i}`} position={[g.x, 0, g.y]}>
+                <group rotation={[0, horiz ? 0 : Math.PI / 2, 0]}>
+                  {[0.2, 1.2].map((yy) => (
+                    <mesh key={`rail-${yy}`} position={[0, yy, 0]}>
+                      <boxGeometry args={[leafW, 0.1, 0.08]} />
+                      <meshStandardMaterial color="#2b2f36" />
+                    </mesh>
+                  ))}
+                  {Array.from({ length: bars }, (_, k) => (
+                    <mesh key={`bar-${k}`} position={[-leafW / 2 + (leafW * (k + 0.5)) / bars, 0.7, 0]}>
+                      <boxGeometry args={[0.05, 1.1, 0.05]} />
+                      <meshStandardMaterial color="#2b2f36" />
+                    </mesh>
+                  ))}
+                </group>
                 {options.showLabels && (
-                  <Html position={[g.x, 2.8, g.y]} center distanceFactor={size * 0.9} style={{ pointerEvents: "none" }}>
+                  <Html position={[0, 2.8, 0]} center distanceFactor={size * 0.9} style={{ pointerEvents: "none" }}>
                     <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "Arial, sans-serif", color: "#fff", background: g.kind === "entrance" ? "#15803d" : "#b45309", padding: "1px 6px", borderRadius: 3, whiteSpace: "nowrap" }}>
                       {g.kind === "entrance" ? (g.vehicle ? "VEHICLE ENTRY" : "ENTRANCE") : "EXIT"}
                     </div>
@@ -121,7 +236,7 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
           })}
         </group>
       )}
-      <gridHelper args={[size * 3, 30, "#b8c2d0", "#d3dae5"]} position={[cx, -0.21, cz]} />
+      {!site && <gridHelper args={[size * 3, 30, "#b8c2d0", "#d3dae5"]} position={[cx, -0.21, cz]} />}
 
       {project.floors.map((floor, fi) => {
         if (options.visible[floor.id] === false) return null;
@@ -185,9 +300,11 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
                         key={`${w.id}-${i}`}
                         position={[w.x1 + d.x * mid, (s.z0 + z1) / 2, w.y1 + d.y * mid]}
                         rotation={[0, -angle, 0]}
+                        castShadow
+                        receiveShadow
                       >
                         <boxGeometry args={[s.a1 - s.a0, z1 - s.z0, w.thickness]} />
-                        <meshStandardMaterial color="#ece6da" />
+                        <meshStandardMaterial color={theme.wall} />
                       </mesh>
                     );
                   });
@@ -223,25 +340,57 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
                   const limit = H * options.wallFactor;
                   if (o.sill >= limit) return null;
                   const top = Math.min(o.sill + o.height, limit);
+                  const ang = -Math.atan2(w.y2 - w.y1, w.x2 - w.x1);
                   return (
-                    <mesh
-                      key={o.id}
-                      position={[w.x1 + d.x * mid, (o.sill + top) / 2, w.y1 + d.y * mid]}
-                      rotation={[0, -Math.atan2(w.y2 - w.y1, w.x2 - w.x1), 0]}
-                    >
-                      <boxGeometry args={[o.width, top - o.sill, 0.03]} />
-                      <meshStandardMaterial color="#8ec5ef" transparent opacity={0.55} />
-                    </mesh>
+                    <group key={o.id} position={[w.x1 + d.x * mid, 0, w.y1 + d.y * mid]} rotation={[0, ang, 0]}>
+                      <mesh position={[0, (o.sill + top) / 2, 0]}>
+                        <boxGeometry args={[o.width, top - o.sill, 0.03]} />
+                        <meshStandardMaterial color={theme.window} transparent opacity={0.8} metalness={0.2} roughness={0.25} />
+                      </mesh>
+                      <mesh position={[0, o.sill - 0.03, 0]}>
+                        <boxGeometry args={[o.width + 0.16, 0.06, w.thickness + 0.1]} />
+                        <meshStandardMaterial color="#ffffff" />
+                      </mesh>
+                    </group>
                   );
                 })}
 
-            {options.showRoof && fi === topIndex &&
-              floor.rooms.filter(isValidRect).map((r) => (
-                <mesh key={`roof-${r.id}`} position={[r.x + r.width / 2, H + 0.07, r.y + r.depth / 2]}>
-                  <boxGeometry args={[r.width + 0.2, 0.14, r.depth + 0.2]} />
-                  <meshStandardMaterial color="#b9a58f" />
+            {options.showWalls && options.wallFactor >= 0.99 && options.explode === 0 && fi < project.floors.length - 1 && (() => {
+              const fp = footprintFill(floor.rooms.filter(isValidRect));
+              if (!fp) return null;
+              return (
+                <mesh position={[fp.box.x + fp.box.width / 2, H, fp.box.y + fp.box.depth / 2]}>
+                  <boxGeometry args={[fp.box.width + 0.12, 0.14, fp.box.depth + 0.12]} />
+                  <meshStandardMaterial color={theme.trim} />
                 </mesh>
-              ))}
+              );
+            })()}
+
+            {options.showRoof && fi === topIndex && roofInfo && (
+              roofInfo.hip ? (
+                <group>
+                  <mesh position={[roofInfo.box.x + roofInfo.box.width / 2, H + 0.04, roofInfo.box.y + roofInfo.box.depth / 2]}>
+                    <boxGeometry args={[roofInfo.box.width, 0.1, roofInfo.box.depth]} />
+                    <meshStandardMaterial color={theme.trim} />
+                  </mesh>
+                  <mesh key={`hip-${roofInfo.box.x}-${roofInfo.box.width}-${roofInfo.box.depth}-${H}`} castShadow receiveShadow>
+                    <bufferGeometry>
+                      <bufferAttribute attach="attributes-position" args={[roofInfo.hip.positions, 3]} />
+                    </bufferGeometry>
+                    <meshStandardMaterial color={theme.roof} flatShading side={2} roughness={0.85} />
+                  </mesh>
+                </group>
+              ) : (
+                <group>
+                  {floor.rooms.filter(isValidRect).map((r) => (
+                    <mesh key={`roof-${r.id}`} position={[r.x + r.width / 2, H + 0.07, r.y + r.depth / 2]} castShadow>
+                      <boxGeometry args={[r.width + 0.2, 0.14, r.depth + 0.2]} />
+                      <meshStandardMaterial color={theme.roof} />
+                    </mesh>
+                  ))}
+                </group>
+              )
+            )}
           </group>
         );
       })}

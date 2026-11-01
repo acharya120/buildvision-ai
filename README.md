@@ -77,6 +77,9 @@ rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do
 
 **Assistant**: a *rule-based* (not AI) assistant understanding five phrase patterns (add a room to a floor, make a room wider/deeper, change the plot size, total room area, flooring estimate). Changes are previewed with any new problems listed, then applied only on confirmation, and can be undone. A deterministic *auto-arrange* packs rooms into rows with a stated list of limitations.
 
+### 3D look and colours
+The 3D view draws a hip roof (when the top floor is close to a rectangle), white window sills, floor bands, soft shadows, a sky gradient, a boundary wall with pillars and caps, hedge and flower-bed shrubs along the wall, multi-part trees, barred gates, a pavement and a road with a dashed centre line. Five colour presets and individual colour pickers (walls, roof, windows, lawn, boundary wall, sky, road) are in the 3D tab; the choice is remembered in the browser. Shadows are switched off automatically for very large buildings (more than 120 rooms) to keep the view smooth. The geometry helpers (roof, shrubs, pillars, road, colour validation) are unit-tested; the WebGL drawing itself has not been looked at in a real browser by me.
+
 ### Branding
 Owner branding ("by Natwar Acharya", the NA logo, tagline and credit) lives in `src/lib/brand.ts` and `src/components/ui/Icons.tsx` (Logo). It appears in the header, footer, browser tab title, tab icon (`src/app/icon.svg`), SVG title block and PDF footer. The safety disclaimer text is unchanged.
 
