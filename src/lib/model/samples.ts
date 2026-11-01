@@ -2,11 +2,16 @@ import type { BuildingType, Project, RoomType } from "./types";
 import { createProject, addRoom, generateWalls, addOpeningNear, getFloor } from "./ops";
 import { makeRoom } from "./defaults";
 import { M_PER_FT } from "./units";
+import { applyOption, DEFAULT_AUTODESIGN_INPUT } from "../layout/autodesign";
+import { COMMERCIAL_PRESETS, DEFAULT_COMMERCIAL_INPUT } from "../layout/autodesignCorridor";
+import { generateCorridorWithFit, generateHouseWithFit } from "../layout/autodesignFit";
 
 export interface SampleInfo {
   key: string;
   title: string;
   description: string;
+  /** short facts shown on the home page card */
+  facts?: string;
   build: () => Project;
 }
 
@@ -41,6 +46,20 @@ function build(
     if ("project" in res) p = res.project;
   }
   void getFloor;
+  return p;
+}
+
+/** Samples below are produced by the same rule-based generators as the Auto design tab (metric, deterministic). */
+function generated(name: string, w: number, d: number, type: BuildingType, floors: number, how: { house: number } | { preset: string }): Project {
+  let p = createProject({ name, plotWidth: w, plotDepth: d, unitSystem: "metric", buildingType: type, floors });
+  if ("house" in how) {
+    const r = generateHouseWithFit(p.plot, { ...DEFAULT_AUTODESIGN_INPUT, floors, bedrooms: how.house });
+    if (!r.options.length) throw new Error(`Sample "${name}" could not be generated`);
+    return applyOption(p, r.options[0]).project;
+  }
+  const r = generateCorridorWithFit(p.plot, { ...DEFAULT_COMMERCIAL_INPUT, ...(COMMERCIAL_PRESETS[how.preset] ?? {}), floors });
+  if (!r.options.length) throw new Error(`Sample "${name}" could not be generated`);
+  p = applyOption(p, r.options[0]).project;
   return p;
 }
 
@@ -139,5 +158,54 @@ export const SAMPLES: SampleInfo[] = [
           { floor: 0, kind: "window", x: 12, y: 31 },
         ],
       ),
+  },
+  {
+    key: "villa-3bhk",
+    title: "3-bedroom villa with garden (2 floors)",
+    facts: "15 × 20 m plot · 2 floors · 3 bedrooms",
+    description: "Family home with living, kitchen, dining, bedrooms, stairs, gates, garden and trees. Illustrative layout only.",
+    build: () => generated("Sample: 3 bedroom villa", 15, 20, "villa", 2, { house: 3 }),
+  },
+  {
+    key: "triplex",
+    title: "Triplex family house (3 floors)",
+    facts: "14 × 22 m plot · 3 floors · 4 bedrooms",
+    description: "A taller family house with a stacked stair and bathroom core on every floor. Illustrative layout only.",
+    build: () => generated("Sample: triplex family house", 14, 22, "triplex", 3, { house: 4 }),
+  },
+  {
+    key: "apartments-5",
+    title: "Apartment block (5 floors)",
+    facts: "25 × 35 m plot · 5 floors · corridor, stairs, lift",
+    description: "Repeated flats on each floor around a central corridor with stairs, lift and toilets. Illustrative layout only.",
+    build: () => generated("Sample: 5 floor apartment block", 25, 35, "apartment", 5, { preset: "hotel" }),
+  },
+  {
+    key: "hotel-5",
+    title: "Hotel (5 floors)",
+    facts: "30 × 40 m plot · 5 floors · reception, lift",
+    description: "Guest rooms on every floor, a ground-floor reception, stairs and lift. Illustrative layout only.",
+    build: () => generated("Sample: 5 floor hotel", 30, 40, "hotel", 5, { preset: "hotel" }),
+  },
+  {
+    key: "school-3",
+    title: "School (3 floors)",
+    facts: "40 × 50 m plot · 3 floors · classrooms",
+    description: "Classrooms along a corridor with stairs and toilets on each floor. Illustrative layout only.",
+    build: () => generated("Sample: 3 floor school", 40, 50, "school", 3, { preset: "school" }),
+  },
+  {
+    key: "office-10",
+    title: "Office tower (10 floors)",
+    facts: "30 × 45 m plot · 10 floors · lift",
+    description: "Offices on every floor, a ground-floor reception, stairs, lift and toilets. Illustrative layout only.",
+    build: () => generated("Sample: 10 floor office tower", 30, 45, "office", 10, { preset: "office" }),
+  },
+  {
+    key: "hospital-10",
+    title: "Hospital block (10 floors)",
+    facts: "40 × 50 m plot · 10 floors · wards, lift",
+    description: "Wards on every floor around a corridor with stairs, lift and toilets. Illustrative layout only.",
+    build: () => generated("Sample: 10 floor hospital block", 40, 50, "hospital", 10, { preset: "hospital" }),
   },
 ];

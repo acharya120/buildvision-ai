@@ -35,7 +35,7 @@ So the first real build happens on your machine or on Vercel. If it fails, the e
 **Projects**
 - Create a project: name, plot width/depth, metric or imperial, building type, floors, optional budget. Invalid, zero, negative and unreasonable values are rejected with readable messages.
 - Save automatically in the browser; reopen, rename, duplicate, delete (with confirmation) from the dashboard.
-- Three clearly labelled sample projects (25-gaj compact home, 30 x 40 ft duplex, narrow 12 x 50 ft plot).
+- Ten labelled sample projects, each previewed on the home page with a floor switcher: 25-gaj compact home, 30 x 40 ft duplex, narrow 12 x 50 ft plot, 3-bedroom villa, triplex, 5-floor apartment block, 5-floor hotel, 3-floor school, 10-floor office tower, 10-floor hospital block. The last seven come from the Auto design generators and have no validation errors or warnings.
 - JSON backup download and import. Imports are fully validated; malformed files are rejected with a list of problems.
 - Reset design (with confirmation, undoable).
 

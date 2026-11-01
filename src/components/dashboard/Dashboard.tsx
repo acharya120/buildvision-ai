@@ -34,6 +34,57 @@ function Thumb({ p }: { p: Project }) {
   );
 }
 
+function SampleCard({ info, onOpen }: { info: (typeof SAMPLES)[number]; onOpen: () => void }) {
+  const [floor, setFloor] = useState(0);
+  const project = useMemo(() => {
+    try {
+      return info.build();
+    } catch {
+      return null;
+    }
+  }, [info]);
+  const f = project?.floors[Math.min(floor, (project?.floors.length ?? 1) - 1)];
+  const svg = useMemo(() => {
+    if (!project || !f) return "";
+    try {
+      return planToSvg(project, f.id, { showTitleBlock: false, showGrid: false, focusBuilding: true });
+    } catch {
+      return "";
+    }
+  }, [project, f]);
+  return (
+    <li className={`${cardCls} flex flex-col overflow-hidden`}>
+      <div className="h-56 bg-ink-50 p-2 sm:h-64" aria-label={`Layout preview of ${info.title}`} role="img">
+        {svg ? <div className="h-full w-full [&_svg]:h-full [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} /> : <p className="grid h-full place-items-center text-xs text-ink-400">Preview not available</p>}
+      </div>
+      {project && project.floors.length > 1 && (
+        <div className="flex flex-wrap gap-1 border-t border-ink-100 px-3 py-2" role="group" aria-label="Choose floor to preview">
+          {project.floors.map((fl, i) => (
+            <button
+              key={fl.id}
+              type="button"
+              onClick={() => setFloor(i)}
+              aria-pressed={floor === i}
+              className={`min-w-8 rounded-md px-2 py-1 text-xs font-semibold ${floor === i ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200"}`}
+            >
+              {i === 0 ? "G" : i}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-1 flex-col p-4 pt-3">
+        <h3 className="text-sm font-semibold text-ink-900">{info.title}</h3>
+        {info.facts && <p className="mt-0.5 text-xs font-medium text-brand-700">{info.facts}</p>}
+        {f && <p className="mt-0.5 text-xs text-ink-500">Showing {f.name}: {f.rooms.length} rooms</p>}
+        <p className="mt-1 text-xs text-ink-500">{info.description}</p>
+        <button className={`${btn} mt-3 self-start`} onClick={onOpen}>
+          Open as new project
+        </button>
+      </div>
+    </li>
+  );
+}
+
 const FEATURES: Array<[string, string, () => ReactElement]> = [
   ["Auto design", "Give a plot size and a brief. Get several complete layouts with rooms, doors, windows, stairs and a site plan. Rule-based, not AI.", IconMagic],
   ["Floor plan editor", "Draw to scale, type exact room sizes, add walls, doors, windows and dimensions. Problems are flagged, never silently fixed.", IconPlan],
@@ -245,16 +296,10 @@ export default function Dashboard() {
           <h2 id="samples" className="mb-1 text-lg font-bold text-ink-900">
             Sample projects
           </h2>
-          <p className="mb-3 text-sm text-ink-500">Illustrative example layouts to explore the tools. They are not architect-designed plans.</p>
-          <ul className="grid gap-4 sm:grid-cols-3">
+          <p className="mb-3 text-sm text-ink-500">{SAMPLES.length} example layouts from 1 to 10 floors. Pick a floor under each plan to preview it, then open it to edit, view in 3D and export. They are illustrative, not architect-designed plans.</p>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SAMPLES.map((s) => (
-              <li key={s.key} className={`${cardCls} flex flex-col p-4`}>
-                <h3 className="text-sm font-semibold text-ink-900">{s.title}</h3>
-                <p className="mt-1 text-xs text-ink-500">{s.description}</p>
-                <button className={`${btn} mt-3 self-start`} onClick={() => createSample(s.key)}>
-                  Open as new project
-                </button>
-              </li>
+              <SampleCard key={s.key} info={s} onOpen={() => createSample(s.key)} />
             ))}
           </ul>
         </section>

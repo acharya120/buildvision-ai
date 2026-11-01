@@ -28,6 +28,8 @@ export interface SvgOptions {
   showSite?: boolean;
   /** draw the whole plot even when the building is a small part of it */
   fullPlot?: boolean;
+  /** always zoom to the building (used for small previews) */
+  focusBuilding?: boolean;
   /** pixels per metre */
   scale?: number;
   /** floor to draw faintly underneath (dashed) */
@@ -74,8 +76,8 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
   if (rooms0.length && opts.fullPlot !== true) {
     const bx0 = Math.min(...rooms0.map((r) => r.x)), by0 = Math.min(...rooms0.map((r) => r.y));
     const bx1 = Math.max(...rooms0.map((r) => r.x + r.width)), by1 = Math.max(...rooms0.map((r) => r.y + r.depth));
-    if ((bx1 - bx0) * (by1 - by0) < 0.1 * p.plot.width * p.plot.depth) {
-      const pad = Math.max(6, 0.35 * Math.max(bx1 - bx0, by1 - by0));
+    if (opts.focusBuilding || (bx1 - bx0) * (by1 - by0) < 0.1 * p.plot.width * p.plot.depth) {
+      const pad = Math.max(opts.focusBuilding ? 3 : 6, (opts.focusBuilding ? 0.18 : 0.35) * Math.max(bx1 - bx0, by1 - by0));
       vx = Math.max(0, bx0 - pad); vy = Math.max(0, by0 - pad);
       vw = Math.min(p.plot.width, bx1 + pad) - vx; vd = Math.min(p.plot.depth, by1 + pad) - vy;
       cropped = true;
