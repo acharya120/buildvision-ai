@@ -1,1 +1,150 @@
-# buildvision-ai
+# BuildVision AI
+
+A browser-based tool for **conceptual** house design: draw a to-scale floor plan, view it in 3D, get dimensioned drawings, and see a **preliminary** quantity estimate. It runs entirely in the browser (projects are stored in your browser), needs no account, no database and no paid API.
+
+> **Important:** BuildVision AI provides conceptual design, visualization, and preliminary estimation tools. Outputs are not automatically approved architectural drawings, structural engineering designs, or construction instructions. A qualified architect and structural engineer must review and approve all relevant plans before construction. Soil conditions, foundations, reinforcement, beams, columns, slabs, staircase safety, fire safety, accessibility, setbacks, local building regulations, and other site-specific requirements must be professionally assessed.
+
+BuildVision AI does **not** check compliance with Indian building regulations, municipal bylaws or any other local rules.
+
+---
+
+## Read this first: verification status
+
+This project was written in an environment where the npm registry was blocked, so **`npm install`, `next build`, `next lint` and the real Vitest/Playwright runners were never executed** before delivery. What was verified instead:
+
+| Check | Result |
+|---|---|
+| TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
+| TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
+| 104 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
+| SVG plan, elevation and section output | Rendered and inspected visually |
+| DXF file opened in a CAD program | **Not done** (only the file structure is unit-tested) |
+| 3D viewer (React Three Fiber), including site trees/gates, the new stairs, door leaves, furniture and Interior mode | **Not run.** Written against the library APIs but never rendered. Only the stair and furniture geometry is unit-tested (inside the room, sensible step rise) |
+| PDF export (jsPDF) | **Not run** |
+| PNG export, file downloads | **Not run** in a real build |
+| `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e` | **Not run** |
+| Vercel deployment | **Not done** |
+
+So the first real build happens on your machine or on Vercel. If it fails, the error text in the build log tells exactly what to fix: copy it and ask for help. See *Troubleshooting* in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+---
+
+## What works
+
+**Projects**
+- Create a project: name, plot width/depth, metric or imperial, building type, floors, optional budget. Invalid, zero, negative and unreasonable values are rejected with readable messages.
+- Save automatically in the browser; reopen, rename, duplicate, delete (with confirmation) from the dashboard.
+- Three clearly labelled sample projects (25-gaj compact home, 30 x 40 ft duplex, narrow 12 x 50 ft plot).
+- JSON backup download and import. Imports are fully validated; malformed files are rejected with a list of problems.
+- Reset design (with confirmation, undoable).
+
+**2D floor-plan editor** (SVG, real coordinates in metres)
+- Plot boundary, grid, scale-correct drawing, pan and zoom (wheel, buttons, Fit).
+- **Add room with exact size**: choose any of the 15 room types (bedroom, balcony, study, etc.), type its name, width and depth, and either place it automatically in free space or give its position. Oversized rooms and full floors give a clear message instead of a silent change; the panel also shows how much of the plot the floor already uses.
+- Add rooms from a library of 15 room types with editable default sizes; select, move (drag), resize (drag corners), rename, delete, and edit width, depth and position numerically. Length boxes accept `12`, `12'6"`, `3.5m`, `350cm`.
+- Draw walls, generate walls from room edges (shared edges merge into one wall), add doors and windows on walls, add dimension lines.
+- Multiple floors: add, remove, rename, set floor height, switch floors, see the floor below as a dashed outline, footprint comparison table.
+- Undo / redo (also Ctrl+Z / Ctrl+Y), Delete key, Esc to return to Select.
+- Room schedule always reflects the real geometry.
+
+**Geometry checks** (never change your design, only report):
+rooms outside the plot, overlapping rooms, zero/negative sizes, openings that do not fit or overlap or have lost their wall, upper-floor overhangs, staircase misalignment, multi-floor building without stairs; optional warning for rooms with no neighbour (off by default, because gaps are often intentional). Errors, warnings and information are shown separately.
+
+**3D view** (built from the same model): orbit/pan/zoom, perspective/top/front presets, reset camera, per-floor visibility, walls (with real door and window gaps), window glass, door leaves, a visual two-flight stair in every staircase room (with an open stairwell in the floor above, so stairs are visible on all floors), optional placeholder furniture by room type, an **Interior (all floors)** mode (roof hidden, walls cut to ~60%, floors separated, furniture on) and an interior camera angle, simple flat roof slab, room labels, wall-height cut-away slider, exploded-floor slider, click a floor slab to select a room.
+
+**Drawings and export**
+- Dimensioned plan SVG with plot dimensions, room sizes/areas, door swings, scale bar, title block, date, units and disclaimer.
+- Basic elevations (4 sides) and sections (any cut line).
+- Room schedule and door/window schedule.
+- Downloads: SVG, PNG, CSV (rooms, openings, estimate), PDF (vector A3 sheets, one per floor, plus schedules, estimate and full disclaimer), JSON backup, OBJ 3D model.
+
+**Estimate**: quantities from the model (areas, wall length/area with opening deductions, plaster, paint, masonry volume, assumed slab concrete, door/window counts). **You enter every rate**; no prices are pre-filled. Each line shows quantity, unit, your rate, amount and the calculation basis, labelled Measured / Calculated / Assumption. Foundations, beams, columns, reinforcement and finishes are explicitly listed as *not estimated*.
+
+**Auto design** (new tab, also available when creating a project): a deterministic, rule-based concept generator. Give it floors, bedrooms, optional garage/study/balcony/utility/dining, the street side, your own setbacks, and a room-size preference. It returns up to three layouts built from fixed rules: rooms in bands, a stair and bathroom core at the same place on every floor, a hall where several bedrooms need one, doors so that every room can be entered (checked by a reachability search), a main entrance, and windows on outside walls. Each option is previewed with the normal validator's results, and "Use this design" replaces the current design in one undoable step. If nothing fits (for example after large setbacks) it says so instead of forcing a broken layout. **It is not AI and not an architect:** it knows nothing about orientation, ventilation, structure, fire or local rules, and the stair is only a footprint allocation.
+
+**Any plot size**: Auto design never just gives up. If your brief does not fit the plot it relaxes it step by step (drops optional rooms, adds floors up to 4, reduces bedrooms) and, for very small or narrow plots (from about 4.2 x 1.8 m of buildable area), produces a compact studio with its own bathroom and kitchen. Everything it changed is listed in plain words (also shown when you create a project from the dashboard). On huge plots the house stays a normal size and is centred, and the exported drawing is cropped around the building (the full plot size stays in the title block; the editor still shows the whole plot). Only land that is genuinely too small for any room (about 2 x 3 m or less after setbacks) gets an honest "cannot fit" message. New projects from the dashboard now generate a starting layout by default; untick the box for a blank plan.
+
+**North direction, DXF and comparison**: set which way north points (Properties panel, degrees clockwise from the top of the plan). A north arrow appears in the editor and on exported drawings, and Auto design adds a note and ranks lower any living room, bedroom or study whose windows all face west. The Drawings tab can export a **DXF** CAD file (plot, rooms, walls, doors, windows and labels on separate layers, floors side by side, metres) for AutoCAD-style tools; it is conceptual geometry, and the DXF has not been opened in real CAD software here. Auto design shows a table comparing the generated options.
+
+**Site surroundings (optional)**: in the Plan tab, Site section, switch on lawn, boundary wall, entrance gate, exit gate, paths/driveway and trees (none / a few / many). The entrance gate is placed on the plot edge in front of your main door (a separate vehicle entry appears if there is a garage door), the exit gate on the opposite side, with arrows and labels. Everything is derived from your plan and doors, drawn in the 2D plan, the exported SVG/PNG/PDF ground-floor sheet, and the 3D view (trees, wall, gate posts, labels). It appears automatically after Auto design and can be turned off. It only works where there is free space on the plot, and it is **not** a landscape, drainage or traffic design and ignores local gate, drive and tree rules.
+
+**Any kind of building, much larger limits**: besides houses there are building types for farmhouse, shop, office, restaurant, hotel, school, hospital, warehouse, factory, mall, mixed-use and community hall, and room types such as office, reception, meeting room, classroom, ward, shop unit, hall, warehouse, workshop, laboratory, corridor, lift, parking and pantry. Plots up to 5,000 m per side, up to 100 floors and floor heights up to 30 m are accepted (these are sanity limits against typos, not design rules). In Auto design, the "Office, hotel, school, hospital, shop, warehouse…" mode generates corridor buildings (rooms on both sides of a corridor, stair, lift and toilets at one end, reception on the ground floor, custom floor height). Presets fill sensible starting sizes; every number is editable.
+
+**Realism upgrades**: generated walls are thicker on the outside (default 0.23 m) than inside (0.115 m), room sizes are measured to wall centre-lines, and the validator now also warns about rooms with no door, habitable rooms with no window (only when the floor has windows at all), rooms far below the usual starting size and very long, narrow rooms. These are practical hints, **not code-compliance checks**.
+
+**Estimate rate presets**: save the rates you typed under a name (stored in this browser) and re-apply them to other projects.
+
+**Assistant**: a *rule-based* (not AI) assistant understanding five phrase patterns (add a room to a floor, make a room wider/deeper, change the plot size, total room area, flooring estimate). Changes are previewed with any new problems listed, then applied only on confirmation, and can be undone. A deterministic *auto-arrange* packs rooms into rows with a stated list of limitations.
+
+### Branding
+Owner branding ("by Natwar Acharya", the NA logo, tagline and credit) lives in `src/lib/brand.ts` and `src/components/ui/Icons.tsx` (Logo). It appears in the header, footer, browser tab title, tab icon (`src/app/icon.svg`), SVG title block and PDF footer. The safety disclaimer text is unchanged.
+
+### Mobile and layout
+- Phones and tablets (under 768 px): a fixed bottom bar switches between Plan, Auto, 3D, Cost, Export and Help. The floor-plan screen splits into Canvas, Rooms & floors and Properties & checks.
+- Desktop: top tabs and the three-column plan editor.
+- A "Next step" hint on the Floor plan tab points to the next sensible action.
+- The home screen shows plan thumbnails of your projects. New project opens as a full-screen sheet on phones.
+- Checked in a headless browser at 360, 390 and 1280 px wide: no horizontal overflow and no console errors. Not tried on real phones, Safari or iOS. Styling was previewed with Tailwind v4 locally; the real Tailwind v3 build has not been run.
+
+## Known limitations
+
+- Corridor-building mode makes one simple shape (rectangular, double-loaded corridor); no fire exits, accessibility, lift sizing or occupancy rules are modelled, and very large or complex buildings (malls, hospitals, factories) need a real design team. Very tall or very large projects may be slow in the 3D view.
+- Auto design (house mode) fills the buildable rectangle with banded layouts only; it cannot produce L-shapes, courtyards or orientation-aware plans, and its stair is not designed (no rise/going/headroom).
+- Rooms are axis-aligned rectangles. No L-shaped or curved rooms. Walls drawn with the wall tool may be at any angle, but generated walls follow room edges.
+- Plot is a rectangle (no corner or irregular plot outlines yet).
+- Stairs are a room type plus a simple visual two-flight stair in 3D; rise, going, headroom and landings are not designed or checked. Furniture is generic placeholder boxes that ignore door positions. Door leaves are drawn closed.
+- No roof design (flat slab only), no site levels, no materials in elevations/sections.
+- Touch screens: single-finger drag works; pinch-zoom on the 2D plan is not implemented (use the +/- buttons). The 3D view uses the library's built-in touch controls.
+- Projects and the room library are stored per browser; clearing browser data deletes them, so download backups.
+- The estimate rates are per m², m³ or piece regardless of the display unit system.
+- No AI-powered editing and no cloud storage/login in this version (see roadmap).
+- Dependency versions use ranges and there is no lockfile, because npm was unavailable when this was generated; the first install creates one.
+
+## Roadmap (not implemented)
+
+1. Run and fix the first real build/lint/test cycle; commit `package-lock.json`.
+2. Pinch-zoom and touch polish on the 2D plan; keyboard nudging of selected rooms.
+3. L-shaped rooms, irregular / corner plots.
+4. Stair geometry and floor-to-floor opening cut-outs.
+5. Roof types, GLB export, cutaway sections in 3D.
+6. Optional server-side AI assistant (`/api/assistant`) that returns structured edits, validated with the same functions, previewed and undoable.
+7. Optional cloud projects and sign-in with proper row-level access control.
+8. Region-specific rule checks, only after being implemented from authoritative sources with stated limits.
+
+## Project layout
+
+```
+src/app/                 Next.js App Router pages (dashboard, /project/[id])
+src/components/          Dashboard, workspace panels, 2D editor, 3D viewer, forms
+src/lib/model/           types (the canonical model), units, defaults, ops, schema (import validation), samples
+src/lib/geometry/        rectangle maths, wall generation, wall/opening splitting
+src/lib/validation/      geometry checks
+src/lib/estimate/        quantity estimation
+src/lib/layout/          deterministic auto-arrange
+src/lib/assistant/       rule-based assistant
+src/lib/export/          SVG, drawings, CSV, OBJ, PDF, download helpers
+src/lib/storage/         browser storage (projects, room library)
+src/lib/state/           undo/redo store
+tests/                   Vitest unit tests    e2e/  Playwright journey
+```
+
+**One model:** the 2D editor, schedules, validation, 3D scene, drawings, estimate and every export read the same `Project` object. **Coordinates:** metres, origin at the plot's top-left, +x right, +y down the plan; 3D maps plan y to three.js z. See the header of `src/lib/model/types.ts`.
+
+## Scripts
+
+```
+npm install        install dependencies
+npm run dev        local development server (http://localhost:3000)
+npm run build      production build (what Vercel runs)
+npm run typecheck  TypeScript check
+npm run lint       ESLint (not part of the Vercel build)
+npm test           unit tests
+npm run test:e2e   browser tests (run `npx playwright install chromium` once)
+```
+
+You do not need to run any of these to deploy: Vercel runs `npm install` and `npm run build` for you. See [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Environment variables
+
+None are required. `.env.example` only documents optional future integrations; never commit real keys.
