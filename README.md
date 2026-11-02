@@ -16,7 +16,7 @@ This project was written in an environment where the npm registry was blocked, s
 |---|---|
 | TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
 | TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
-| 125 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| 137 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
 | Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
 | SVG plan, elevation and section output | Rendered and inspected visually |
 | DXF file opened in a CAD program | **Not done** (only the file structure is unit-tested) |
@@ -103,6 +103,13 @@ Turn on **Details** in the right panel (or tick "Show extra details" when creati
 In 3D use **Structural view (x-ray)** to hide walls, roof and furniture and see only the frame.
 
 **This is indicative only.** Column, beam and footing sizes are placeholders you can edit; they are not calculated from loads, soil or codes and must never be used for construction. A licensed structural engineer must design the real structure. Validation results are unaffected by this layer.
+
+### Areas, FAR and load distribution (optional)
+
+- **Areas and FAR** (right panel, always shown, changes nothing): plot area, built-up area per floor, total built-up, FAR (total built-up / plot area), ground coverage and open area. Built-up is the union of the rooms grown by half the outside wall thickness, every floor counted in full. Local rules often exempt stairs, parking or balconies and set their own limits, so check with your authority.
+- **Load distribution** (inside Details, switched off by default): slab load (self weight + finishes + live load) is shared between columns by grid area, wall weight goes to the end columns of each beam, column self weight is added, and each floor's load is carried down to the nearest column below. The panel lists the heaviest columns with the soil pressure under your footing size and the footing side that would be needed, and the plan shows a kN figure beside each column. Footings are only reported, never resized.
+- The starting loads (1.5 finish, 2.0 live, 1.5 roof, 19 kN/m³ walls, 150 kN/m² soil) are **placeholders, not from any code**. Service loads only: no load factors, wind, earthquake, continuity, stairs, openings or soil investigation. It explains how load travels; it is **not a structural design** and must not be used to size or build anything. A licensed structural engineer must do that.
+- Verified by unit tests (load is conserved down to the ground, bigger live load gives bigger result, JSON round trip, validation unchanged) and a headless browser run. Not viewed in a real 3D/WebGL browser; the load figures are 2D only.
 
 ## Known limitations
 

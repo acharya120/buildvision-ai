@@ -1,6 +1,7 @@
 "use client";
 
-import { DEFAULT_DETAIL, DEFAULT_SITE } from "@/lib/model/defaults";
+import { useMemo } from "react";
+import { DEFAULT_DETAIL, DEFAULT_LOADS, DEFAULT_SITE } from "@/lib/model/defaults";
 import type { BuildingType, RoomType, UnitSystem, ValidationIssue } from "@/lib/model/types";
 import { BUILDING_TYPE_LABELS, ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/model/defaults";
 import {
@@ -23,6 +24,8 @@ import {
   updateWall,
 } from "@/lib/model/ops";
 import { formatArea, formatLength, formatPlotArea } from "@/lib/model/units";
+import { areaSummary } from "@/lib/structure/areas";
+import { computeLoads } from "@/lib/structure/loads";
 import { wallLength } from "@/lib/geometry/walls";
 import { useWorkspace } from "@/lib/state/store";
 import { btnDanger, inputCls, Label, LengthField, NumberField, TextField } from "../ui/Field";
@@ -38,6 +41,8 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
   const { project, activeFloorId, selection } = ws.state;
   const floor = getFloor(project, activeFloorId) ?? project.floors[0];
   const sys = project.unitSystem;
+  const areas = useMemo(() => areaSummary(project), [project]);
+  const loadRes = useMemo(() => computeLoads(project), [project]);
   const cur = () => ws.getState().project;
 
   const room = selection?.kind === "room" ? floor.rooms.find((r) => r.id === selection.id) : undefined;
@@ -172,6 +177,15 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
           <NumberField label="Target budget (optional)" value={project.targetBudget} onCommit={(v) => ws.commit(setTargetBudget(cur(), v))} />
           <NumberField label="North direction (degrees clockwise from the top of the plan; 0 = north is up)" value={project.northAngle ?? 0} allowEmpty={false} min={-360} onCommit={(v) => v != null && ws.commit(setNorth(cur(), v))} />
           <fieldset className="rounded-md border border-ink-200 p-2">
+            <legend className="px-1 text-xs font-semibold">Areas and FAR</legend>
+            <div className="space-y-0.5 text-xs">
+              {([["Plot area", formatArea(areas.plotArea, sys), false], ...areas.floors.map((f) => [`${f.name} built-up`, formatArea(f.builtUp, sys), false] as const), ["Total built-up", formatArea(areas.totalBuiltUp, sys), true], ["FAR", areas.far.toFixed(2), true], ["Ground coverage", `${areas.coveragePct.toFixed(1)}%`, false], ["Open area", formatArea(areas.openArea, sys), false]] as ReadonlyArray<readonly [string, string, boolean]>).map(([k, v, bold], i) => (
+                <div key={i} className={`flex justify-between gap-2 ${bold ? "font-semibold" : ""}`}><span>{k}</span><span className="text-right">{v}</span></div>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-ink-500">Built-up = rooms plus half the outside wall thickness, every floor counted in full. Local rules often exempt stairs, parking or balconies and set their own FAR limit, so check with your authority.</p>
+          </fieldset>
+          <fieldset className="rounded-md border border-ink-200 p-2">
             <legend className="px-1 text-xs font-semibold">Details: structure, furniture, stairs</legend>
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!project.detail} onChange={(e) => ws.commit(setDetail(cur(), e.target.checked ? DEFAULT_DETAIL : null))} /> Show extra drawing details</label>
             {project.detail && (
@@ -183,6 +197,33 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
                 <LengthField label="Longest span between columns" meters={project.detail.maxSpan} system={sys} min={2} max={20} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, maxSpan: m }))} />
                 <LengthField label="Footing size (square)" meters={project.detail.footingSize} system={sys} min={0.4} max={6} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, footingSize: m }))} />
                 <LengthField label="Beam depth" meters={project.detail.beamDepth} system={sys} min={0.15} max={2} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, beamDepth: m }))} />
+                <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!project.detail.loads} onChange={(e) => ws.commit(setDetail(cur(), { ...project.detail!, loads: e.target.checked ? DEFAULT_LOADS : undefined }))} /> Load distribution (optional, indicative)</label>
+                {project.detail.loads && (
+                  <div className="space-y-1 rounded border border-ink-200 p-2">
+                    <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={project.detail.loads.show} onChange={(e) => ws.commit(setDetail(cur(), { ...project.detail!, loads: { ...project.detail!.loads!, show: e.target.checked } }))} /> Write the load (kN) next to each column</label>
+                    {([["finishDead", "Floor finish + partitions (kN/m²)", 0], ["liveLoad", "Live load on floors (kN/m²)", 0], ["roofLoad", "Live load on top slab (kN/m²)", 0], ["wallWeight", "Wall weight (kN/m³)", 1], ["bearing", "Allowed soil pressure (kN/m²)", 10]] as const).map(([k, label, min]) => (
+                      <NumberField key={k} label={label} value={project.detail!.loads![k]} allowEmpty={false} min={min} onCommit={(v) => v != null && ws.commit(setDetail(cur(), { ...project.detail!, loads: { ...project.detail!.loads!, [k]: v } }))} />
+                    ))}
+                    <LengthField label="Slab thickness" meters={project.detail.loads.slabThickness} system={sys} min={0.05} max={1} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, loads: { ...project.detail!.loads!, slabThickness: m } }))} />
+                    {loadRes && (
+                      <div className="text-[11px]">
+                        <p className="font-semibold">Load reaching the ground: {Math.round(loadRes.totalToGround)} kN (service)</p>
+                        <table className="mt-1 w-full text-left">
+                          <thead><tr><th>Column</th><th>Load kN</th><th>Soil kN/m²</th><th>Footing side needed</th></tr></thead>
+                          <tbody>
+                            {[...loadRes.footings].sort((a, b) => b.load - a.load).slice(0, 8).map((f) => (
+                              <tr key={f.ref} className={f.ok ? "" : "font-semibold text-red-700"}>
+                                <td>{f.ref}</td><td>{Math.round(f.load)}</td><td>{Math.round(f.pressure)}{f.ok ? "" : " (over)"}</td><td>{formatLength(f.neededSide, sys)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {loadRes.footings.length > 8 && <p className="text-ink-500">Heaviest 8 of {loadRes.footings.length} columns shown. Footings are only reported, never resized for you.</p>}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-ink-500">Each slab's load is shared between columns by grid area, wall weight goes to the beams' end columns, and loads are carried down floor by floor. The starting values are placeholders, not from any code. No wind, earthquake, load factors or soil investigation: not a structural design.</p>
+                  </div>
+                )}
                 <p className="text-[11px] text-ink-500">An indicative layout drawn from your walls: columns at corners and junctions, extra columns where a wall is longer than your span limit, beams between them. The sizes are placeholders you can change. It is not a structural design; a structural engineer must design the real structure.</p>
               </div>
             )}

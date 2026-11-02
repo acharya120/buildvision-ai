@@ -235,6 +235,18 @@ export function parseProject(raw: unknown): ParseResult {
       footingSize: num(d.footingSize, 0.4, 6, 1.0),
       maxSpan: num(d.maxSpan, 2, 20, 4.5),
     };
+    if (isRec(d.loads)) {
+      const l = d.loads;
+      detail.loads = {
+        show: l.show !== false,
+        finishDead: num(l.finishDead, 0, 20, 1.5),
+        slabThickness: num(l.slabThickness, 0.05, 1, 0.15),
+        liveLoad: num(l.liveLoad, 0, 50, 2),
+        roofLoad: num(l.roofLoad, 0, 50, 1.5),
+        wallWeight: num(l.wallWeight, 1, 30, 19),
+        bearing: num(l.bearing, 10, 5000, 150),
+      };
+    }
   }
 
   if (errors.length) return { ok: false, errors };

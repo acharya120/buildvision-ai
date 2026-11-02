@@ -1,4 +1,4 @@
-import type { SiteOptions, DetailOptions, BuildingSettings, BuildingType, Room, RoomType } from "./types";
+import type { SiteOptions, DetailOptions, LoadOptions, BuildingSettings, BuildingType, Room, RoomType } from "./types";
 import { newId } from "./ids";
 
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
@@ -167,6 +167,17 @@ export const DEFAULT_DETAIL: DetailOptions = {
   beamDepth: 0.45,
   footingSize: 1.0,
   maxSpan: 4.5,
+};
+
+/** Placeholder values to start from. Replace them with figures from your engineer. */
+export const DEFAULT_LOADS: LoadOptions = {
+  show: true,
+  finishDead: 1.5,
+  slabThickness: 0.15,
+  liveLoad: 2.0,
+  roofLoad: 1.5,
+  wallWeight: 19,
+  bearing: 150,
 };
 
 export function defaultSettings(): BuildingSettings {

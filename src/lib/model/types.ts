@@ -180,6 +180,29 @@ export interface DetailOptions {
   footingSize: number;
   /** longest distance allowed between columns along a wall, m */
   maxSpan: number;
+  /** optional indicative load distribution (absent = off) */
+  loads?: LoadOptions;
+}
+
+/**
+ * Inputs for the indicative load distribution. All values are placeholders the user can change;
+ * they are NOT taken from any design code and the result is not a structural design.
+ */
+export interface LoadOptions {
+  /** write the column load (kN) next to each column on the plan */
+  show: boolean;
+  /** floor finish + services + partitions, kN/m2 */
+  finishDead: number;
+  /** slab thickness, m (self weight uses 25 kN/m3) */
+  slabThickness: number;
+  /** imposed (live) load on floors, kN/m2 */
+  liveLoad: number;
+  /** imposed load on the top slab/roof, kN/m2 */
+  roofLoad: number;
+  /** wall unit weight, kN/m3 (brick masonry is often about 19) */
+  wallWeight: number;
+  /** allowable soil bearing pressure under footings, kN/m2 */
+  bearing: number;
 }
 
 export interface Project {

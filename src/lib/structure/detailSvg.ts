@@ -1,3 +1,4 @@
+import { computeLoads } from "./loads";
 import type { Floor, Project } from "../model/types";
 import { formatLength } from "../model/units";
 import { isValidRect } from "../geometry/rect";
@@ -64,6 +65,15 @@ export function detailSvg(
     if (d.columns) {
       const cs = Math.max(d.columnSize * s, 5 * u);
       for (const c of st.columns) out.push(`<rect x="${f2(X(c.x) - cs / 2)}" y="${f2(Y(c.y) - cs / 2)}" width="${f2(cs)}" height="${f2(cs)}" fill="#b91c1c" stroke="#ffffff" stroke-width="${f2(0.8 * u)}"/>`);
+    }
+    if (d.loads?.show) {
+      const fl = computeLoads(p)?.floors[floorIndex];
+      if (fl && fl.columns.length === st.columns.length) {
+        const cs = Math.max(d.columnSize * s, 5 * u);
+        fl.columns.forEach((c) => {
+          out.push(`<text x="${f2(X(c.x) + cs / 2 + 2 * u)}" y="${f2(Y(c.y) - cs / 2 - 1 * u)}" font-size="${f2(7 * u)}" font-weight="bold" fill="#7f1d1d" stroke="#ffffff" stroke-width="${f2(2 * u)}" paint-order="stroke">${Math.round(c.total)} kN</text>`);
+        });
+      }
     }
     if (d.grid && st.bbox) {
       const r = 9 * u;
