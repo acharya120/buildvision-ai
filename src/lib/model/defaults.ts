@@ -1,4 +1,4 @@
-import type { SiteOptions, BuildingSettings, BuildingType, Room, RoomType } from "./types";
+import type { SiteOptions, DetailOptions, BuildingSettings, BuildingType, Room, RoomType } from "./types";
 import { newId } from "./ids";
 
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
@@ -155,6 +155,19 @@ export const FLOOR_NAMES = ["Ground Floor", "First Floor", "Second Floor", "Thir
 export const floorNameFor = (index: number) => FLOOR_NAMES[index] ?? `Floor ${index + 1}`;
 
 export const DEFAULT_SITE: SiteOptions = { lawn: true, boundaryWall: true, entranceGate: true, exitGate: true, paths: true, trees: "few" };
+
+export const DEFAULT_DETAIL: DetailOptions = {
+  grid: true,
+  columns: true,
+  beams: true,
+  footings: true,
+  furniture: true,
+  stairs: true,
+  columnSize: 0.3,
+  beamDepth: 0.45,
+  footingSize: 1.0,
+  maxSpan: 4.5,
+};
 
 export function defaultSettings(): BuildingSettings {
   return {

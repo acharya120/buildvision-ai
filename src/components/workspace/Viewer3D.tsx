@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useWorkspace } from "@/lib/state/store";
+import { DEFAULT_DETAIL } from "@/lib/model/defaults";
+import { setDetail } from "@/lib/model/ops";
 import { formatArea, formatLength } from "@/lib/model/units";
 import { btn, Disclaimer } from "../ui/Field";
 import { DEFAULT_THEME, THEME_FIELDS, THEME_PRESETS, sanitizeTheme, type Theme3D } from "@/lib/geometry/theme3d";
@@ -28,7 +30,8 @@ export default function Viewer3D() {
   const [showWindows, setShowWindows] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showDoors, setShowDoors] = useState(true);
-  const [showFurniture, setShowFurniture] = useState(false);
+  const [showFurniture, setShowFurniture] = useState(!!project.detail?.furniture);
+  const [showStructure, setShowStructure] = useState(true);
   const [showStairs, setShowStairs] = useState(true);
   const [showSite, setShowSite] = useState(true);
   const [preset, setPreset] = useState<CameraPreset>("perspective");
@@ -64,7 +67,7 @@ export default function Viewer3D() {
         {hasRooms ? (
           <Scene3D
             project={project}
-            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, showDoors, showFurniture, showStairs, showSite, theme, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
+            options={{ visible, wallFactor, explode, showWalls, showRoof, showWindows, showLabels, showDoors, showFurniture, showStairs, showSite, showStructure, theme, selectedRoomId: selectedRoom?.id ?? null, preset, cameraKey }}
             onSelectRoom={(floorId, roomId) => {
               ws.setActiveFloor(floorId);
               ws.select({ kind: "room", id: roomId });
@@ -100,6 +103,26 @@ export default function Viewer3D() {
               Interior (all floors)
             </button>
           </div>
+        </section>
+
+        <section>
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500">Structure (indicative)</h2>
+          {project.detail ? (
+            <>
+              <label className="flex items-center gap-2 py-0.5"><input type="checkbox" checked={showStructure} onChange={(e) => setShowStructure(e.target.checked)} /> Columns, beams, footings</label>
+              <button
+                type="button"
+                className={`${btn} mt-1`}
+                title="Hides walls, roof and furniture so the columns, beams and footings stand out; the ground becomes see-through"
+                onClick={() => { setShowStructure(true); setShowWalls(false); setShowRoof(false); setShowFurniture(false); setShowLabels(false); setWallFactor(1); setExplode(0); setPreset("perspective"); setCameraKey((k) => k + 1); }}
+              >
+                Structural view (x-ray)
+              </button>
+            </>
+          ) : (
+            <button type="button" className={btn} onClick={() => ws.commit(setDetail(ws.getState().project, DEFAULT_DETAIL))}>Add structural details</button>
+          )}
+          <p className="mt-1 text-[11px] text-ink-500">Drawn from your walls with placeholder sizes. Not a structural design.</p>
         </section>
 
         <section>

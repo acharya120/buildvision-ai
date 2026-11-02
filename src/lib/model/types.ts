@@ -161,6 +161,27 @@ export interface SiteOptions {
   trees: "none" | "few" | "many";
 }
 
+/**
+ * Optional drawing details: an indicative structural layout (columns, beams, footings, grid lines),
+ * furniture symbols and stair symbols. Sizes are placeholders typed by the user, not engineering design.
+ */
+export interface DetailOptions {
+  grid: boolean;
+  columns: boolean;
+  beams: boolean;
+  footings: boolean;
+  furniture: boolean;
+  stairs: boolean;
+  /** square column side, m */
+  columnSize: number;
+  /** beam depth below the slab, m */
+  beamDepth: number;
+  /** square footing side, m */
+  footingSize: number;
+  /** longest distance allowed between columns along a wall, m */
+  maxSpan: number;
+}
+
 export interface Project {
   schemaVersion: 1;
   id: string;
@@ -176,6 +197,8 @@ export interface Project {
   rates: Record<string, MaterialRate>;
   /** optional surroundings (garden, gates, trees); absent = not shown */
   site?: SiteOptions;
+  /** optional structural layout, furniture and stair symbols; absent = not shown */
+  detail?: DetailOptions;
   /** degrees clockwise from the top of the plan to true north (0 = north is up). Shown as a north arrow. */
   northAngle?: number;
 }

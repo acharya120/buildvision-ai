@@ -126,6 +126,14 @@ export function setRate(p: Project, key: string, rate: number | null): Project {
 export const setNorth = (p: Project, deg: number): Project =>
   Number.isFinite(deg) ? { ...p, northAngle: ((roundMm(deg) % 360) + 360) % 360, updatedAt: new Date().toISOString() } : p;
 
+/** Turn the optional structural / furniture / stair details on (with the given options) or off (null). */
+export const setDetail = (p: Project, detail: Project["detail"] | null): Project => {
+  const next = { ...p, updatedAt: new Date().toISOString() };
+  if (detail) next.detail = { ...detail };
+  else delete next.detail;
+  return next;
+};
+
 /** Turn the site surroundings on (with the given options) or off (null). */
 export const setSite = (p: Project, site: Project["site"] | null): Project => {
   const next = { ...p, updatedAt: new Date().toISOString() };

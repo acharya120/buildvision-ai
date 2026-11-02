@@ -16,13 +16,14 @@ This project was written in an environment where the npm registry was blocked, s
 |---|---|
 | TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
 | TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
-| 104 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| 125 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
 | Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
 | SVG plan, elevation and section output | Rendered and inspected visually |
 | DXF file opened in a CAD program | **Not done** (only the file structure is unit-tested) |
 | 3D viewer (React Three Fiber), including site trees/gates, the new stairs, door leaves, furniture and Interior mode | **Not run.** Written against the library APIs but never rendered. Only the stair and furniture geometry is unit-tested (inside the room, sensible step rise) |
 | PDF export (jsPDF) | **Not run** |
 | PNG export, file downloads | **Not run** in a real build |
+| Structure/detail layers in 3D (columns, beams, footings) | **Not run in WebGL.** Only a render-tree smoke test (no crashes; ~9,000 meshes for a 10-floor hospital with details) and unit tests of the column/beam/grid logic |
 | `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e` | **Not run** |
 | Vercel deployment | **Not done** |
 
@@ -89,6 +90,19 @@ Owner branding ("by Natwar Acharya", the NA logo, tagline and credit) lives in `
 - A "Next step" hint on the Floor plan tab points to the next sensible action.
 - The home screen shows plan thumbnails of your projects. New project opens as a full-screen sheet on phones.
 - Checked in a headless browser at 360, 390 and 1280 px wide: no horizontal overflow and no console errors. Not tried on real phones, Safari or iOS. Styling was previewed with Tailwind v4 locally; the real Tailwind v3 build has not been run.
+
+## Details layer (optional): structure, furniture, stairs
+
+Turn on **Details** in the right panel (or tick "Show extra details" when creating a project). Nothing changes when it is off. When on, the 2D plan, SVG/PNG/PDF exports and the 3D view also show:
+
+- column grid lines with bubbles (1, 2, 3… and A, B, C…) and spacings
+- columns at wall corners/junctions (plus extra ones where a wall run exceeds your "longest span")
+- beams between columns and footings under the ground-floor columns
+- furniture outlines and stair steps with UP/DN labels
+
+In 3D use **Structural view (x-ray)** to hide walls, roof and furniture and see only the frame.
+
+**This is indicative only.** Column, beam and footing sizes are placeholders you can edit; they are not calculated from loads, soil or codes and must never be used for construction. A licensed structural engineer must design the real structure. Validation results are unaffected by this layer.
 
 ## Known limitations
 

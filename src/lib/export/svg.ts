@@ -1,4 +1,5 @@
 import { buildSite, siteSvg } from "../site/site";
+import { detailSvg } from "../structure/detailSvg";
 import { BRAND } from "../brand";
 import type { Floor, Project } from "../model/types";
 import { ROOM_COLORS, ROOM_TYPE_LABELS } from "../model/defaults";
@@ -86,7 +87,7 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
   const clipId = `view${++clipCounter}`; // unique, because several SVGs can sit in one HTML page
   const plotMax = Math.max(vw, vd);
   const s = opts.scale ?? Math.max(4, 700 / plotMax);
-  const margin = 80;
+  const margin = p.detail?.grid ? 104 : 80; // a little more room for the grid-line labels when details are on
   const titleH = showTitle ? 120 : 0;
   const planW = vw * s;
   const planH = vd * s;
@@ -159,6 +160,8 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
       }
     }
   }
+
+  if (p.detail) out.push(detailSvg(p, floor, Math.max(0, p.floors.indexOf(floor)), X, Y, s, 1, X(vx) - 58, Y(vy) - 58));
 
   for (const r of floor.rooms.filter(isValidRect)) {
     const cx = X(r.x + r.width / 2);

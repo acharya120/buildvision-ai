@@ -1,6 +1,7 @@
 "use client";
 
 import { buildSite, siteSvg } from "@/lib/site/site";
+import { detailSvg } from "@/lib/structure/detailSvg";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Room, ValidationIssue } from "@/lib/model/types";
 import { ROOM_COLORS, ROOM_TYPE_LABELS, makeRoom } from "@/lib/model/defaults";
@@ -249,6 +250,10 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
 
   const s = view.scale;
   const site = useMemo(() => buildSite(project), [project]);
+  const detailHtml = useMemo(
+    () => (project.detail ? detailSvg(project, floor, Math.max(0, project.floors.findIndex((f) => f.id === floor.id)), (m) => m, (m) => m, 1, 1 / s, -34 / s, -34 / s) : ""),
+    [project, floor, s],
+  );
   const px = (n: number) => n / s; // screen pixels -> world units
   const gridStep = sys === "metric" ? 1 : M_PER_FT;
   const hint = TOOLS.find((t) => t.id === tool)?.hint ?? "";
@@ -441,6 +446,8 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
                 </g>
               );
             })}
+
+            {detailHtml && <g pointerEvents="none" dangerouslySetInnerHTML={{ __html: detailHtml }} />}
 
             {floor.dimensions.map((d) => {
               const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);

@@ -219,6 +219,24 @@ export function parseProject(raw: unknown): ParseResult {
     };
   }
 
+  let detail: Project["detail"];
+  if (isRec(root.detail)) {
+    const d = root.detail;
+    const num = (v: unknown, lo: number, hi: number, dflt: number) => (isNum(v) && v >= lo && v <= hi ? v : dflt);
+    detail = {
+      grid: d.grid !== false,
+      columns: d.columns !== false,
+      beams: d.beams !== false,
+      footings: d.footings !== false,
+      furniture: d.furniture !== false,
+      stairs: d.stairs !== false,
+      columnSize: num(d.columnSize, 0.1, 2, 0.3),
+      beamDepth: num(d.beamDepth, 0.15, 2, 0.45),
+      footingSize: num(d.footingSize, 0.4, 6, 1.0),
+      maxSpan: num(d.maxSpan, 2, 20, 4.5),
+    };
+  }
+
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
@@ -236,6 +254,7 @@ export function parseProject(raw: unknown): ParseResult {
       settings,
       rates,
       ...(site ? { site } : {}),
+      ...(detail ? { detail } : {}),
       ...(northAngle !== undefined ? { northAngle } : {}),
     },
   };

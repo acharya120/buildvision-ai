@@ -12,6 +12,7 @@ import { buildSite } from "@/lib/site/site";
 import { stairBlocks } from "@/lib/geometry/stairs";
 import { furnitureFor } from "@/lib/geometry/furniture";
 import type { Theme3D } from "@/lib/geometry/theme3d";
+import { buildStructure } from "@/lib/structure/structure";
 import { footprintFill, hipRoofPositions, pillarPositions, roadAlong, shrubPositions } from "@/lib/geometry/landscape";
 
 const SHRUB_TONES = ["#3f8f3a", "#4fa046", "#2f7d35"];
@@ -32,6 +33,7 @@ export interface SceneOptions {
   showFurniture: boolean;
   showStairs: boolean;
   showSite: boolean;
+  showStructure: boolean;
   theme: Theme3D;
   selectedRoomId: string | null;
   preset: CameraPreset;
@@ -71,6 +73,13 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
   const heavy = project.floors.reduce((n, f) => n + f.rooms.length, 0) > 120;
 
   // roof: a hip roof when the top floor is (almost) a rectangle, otherwise a plain slab per room
+  // optional structural layout (columns, beams, footings) drawn from the walls of each floor
+  const detail = options.showStructure ? project.detail : undefined;
+  const structures = useMemo(
+    () => (detail && (detail.columns || detail.beams || detail.footings) ? project.floors.map((f) => buildStructure(f, detail.maxSpan)) : null),
+    [project, detail],
+  );
+  const seeFootings = !!(structures && detail?.footings);
   const roofInfo = useMemo(() => {
     if (topIndex < 0) return null;
     const f = project.floors[topIndex];
@@ -111,11 +120,11 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.26, cz]}>
         <planeGeometry args={[size * 10, size * 10]} />
-        <meshStandardMaterial color={theme.ground} />
+        <meshStandardMaterial color={theme.ground} transparent={seeFootings} opacity={seeFootings ? 0.35 : 1} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[cx, -0.2, cz]} receiveShadow>
         <planeGeometry args={[plot.width, plot.depth]} />
-        <meshStandardMaterial color={site?.options.lawn === false ? "#d9d4c8" : theme.lawn} />
+        <meshStandardMaterial color={site?.options.lawn === false ? "#d9d4c8" : theme.lawn} transparent={seeFootings} opacity={seeFootings ? 0.4 : 1} />
       </mesh>
       {site && road && (
         <group>
@@ -354,6 +363,43 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
                     </group>
                   );
                 })}
+
+            {structures && detail && structures[fi] && (
+              <group>
+                {detail.columns &&
+                  structures[fi].columns.map((c, ci) => (
+                    <mesh key={`col-${ci}`} position={[c.x, H / 2 - 0.06, c.y]} castShadow>
+                      <boxGeometry args={[detail.columnSize, H + 0.12, detail.columnSize]} />
+                      <meshStandardMaterial color="#8d949c" />
+                    </mesh>
+                  ))}
+                {detail.beams &&
+                  structures[fi].beams.map((b, bi) => {
+                    const horiz = Math.abs(b.y2 - b.y1) < 1e-3;
+                    const len = Math.hypot(b.x2 - b.x1, b.y2 - b.y1);
+                    const bw = Math.min(0.23, detail.columnSize);
+                    return (
+                      <mesh key={`beam-${bi}`} position={[(b.x1 + b.x2) / 2, H - detail.beamDepth / 2, (b.y1 + b.y2) / 2]}>
+                        <boxGeometry args={horiz ? [len, detail.beamDepth, bw] : [bw, detail.beamDepth, len]} />
+                        <meshStandardMaterial color="#a89f91" />
+                      </mesh>
+                    );
+                  })}
+                {detail.footings && fi === 0 &&
+                  structures[0].columns.map((c, ci) => (
+                    <group key={`ft-${ci}`} position={[c.x, 0, c.y]}>
+                      <mesh position={[0, -0.9, 0]}>
+                        <boxGeometry args={[detail.footingSize, 0.4, detail.footingSize]} />
+                        <meshStandardMaterial color="#7b6a55" />
+                      </mesh>
+                      <mesh position={[0, -0.51, 0]}>
+                        <boxGeometry args={[detail.columnSize, 0.78, detail.columnSize]} />
+                        <meshStandardMaterial color="#8d949c" />
+                      </mesh>
+                    </group>
+                  ))}
+              </group>
+            )}
 
             {options.showWalls && options.wallFactor >= 0.99 && options.explode === 0 && fi < project.floors.length - 1 && (() => {
               const fp = footprintFill(floor.rooms.filter(isValidRect));

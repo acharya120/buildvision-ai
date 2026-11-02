@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_SITE } from "@/lib/model/defaults";
+import { DEFAULT_DETAIL, DEFAULT_SITE } from "@/lib/model/defaults";
 import type { BuildingType, RoomType, UnitSystem, ValidationIssue } from "@/lib/model/types";
 import { BUILDING_TYPE_LABELS, ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/model/defaults";
 import {
@@ -15,6 +15,7 @@ import {
   setSettings,
   setTargetBudget,
   setSite,
+  setDetail,
   setNorth,
   setUnitSystem,
   updateOpening,
@@ -170,6 +171,22 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
           </div>
           <NumberField label="Target budget (optional)" value={project.targetBudget} onCommit={(v) => ws.commit(setTargetBudget(cur(), v))} />
           <NumberField label="North direction (degrees clockwise from the top of the plan; 0 = north is up)" value={project.northAngle ?? 0} allowEmpty={false} min={-360} onCommit={(v) => v != null && ws.commit(setNorth(cur(), v))} />
+          <fieldset className="rounded-md border border-ink-200 p-2">
+            <legend className="px-1 text-xs font-semibold">Details: structure, furniture, stairs</legend>
+            <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!project.detail} onChange={(e) => ws.commit(setDetail(cur(), e.target.checked ? DEFAULT_DETAIL : null))} /> Show extra drawing details</label>
+            {project.detail && (
+              <div className="mt-1 space-y-1">
+                {([["grid", "Grid lines with labels and spacing"], ["columns", "Columns"], ["beams", "Beams (dashed)"], ["footings", "Footings (ground floor, dashed)"], ["furniture", "Furniture symbols"], ["stairs", "Stair steps and UP / DN"]] as const).map(([k, label]) => (
+                  <label key={k} className="flex items-center gap-2 text-xs"><input type="checkbox" checked={project.detail![k]} onChange={(e) => ws.commit(setDetail(cur(), { ...project.detail!, [k]: e.target.checked }))} /> {label}</label>
+                ))}
+                <LengthField label="Column size (square)" meters={project.detail.columnSize} system={sys} min={0.1} max={2} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, columnSize: m }))} />
+                <LengthField label="Longest span between columns" meters={project.detail.maxSpan} system={sys} min={2} max={20} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, maxSpan: m }))} />
+                <LengthField label="Footing size (square)" meters={project.detail.footingSize} system={sys} min={0.4} max={6} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, footingSize: m }))} />
+                <LengthField label="Beam depth" meters={project.detail.beamDepth} system={sys} min={0.15} max={2} onCommit={(m) => ws.commit(setDetail(cur(), { ...project.detail!, beamDepth: m }))} />
+                <p className="text-[11px] text-ink-500">An indicative layout drawn from your walls: columns at corners and junctions, extra columns where a wall is longer than your span limit, beams between them. The sizes are placeholders you can change. It is not a structural design; a structural engineer must design the real structure.</p>
+              </div>
+            )}
+          </fieldset>
           <fieldset className="rounded-md border border-ink-200 p-2">
             <legend className="px-1 text-xs font-semibold">Site: garden, gates, trees</legend>
             <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!project.site} onChange={(e) => ws.commit(setSite(cur(), e.target.checked ? DEFAULT_SITE : null))} /> Show surroundings</label>

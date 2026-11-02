@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BuildingType, Project, UnitSystem } from "@/lib/model/types";
 import { BUILDING_TYPE_LABELS, SUGGESTED_FLOORS } from "@/lib/model/defaults";
-import { LIMITS, createProject, validateNewProject } from "@/lib/model/ops";
+import { LIMITS, createProject, setDetail, validateNewProject } from "@/lib/model/ops";
+import { DEFAULT_DETAIL } from "@/lib/model/defaults";
 import { SAMPLES } from "@/lib/model/samples";
 import { parseProjectJson } from "@/lib/model/schema";
 import { formatPlotArea, parseLength, unitLabel } from "@/lib/model/units";
@@ -355,6 +356,7 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
   const [floors, setFloors] = useState("1");
   const [budget, setBudget] = useState("");
   const [auto, setAuto] = useState(true);
+  const [details, setDetails] = useState(true);
   const [beds, setBeds] = useState("2");
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -392,6 +394,7 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
       p = applyOption(p, res.options[0]).project;
       rememberAdjustments(res.adjustments);
     }
+    if (details) p = setDetail(p, DEFAULT_DETAIL);
     saveProject(p);
     onCreated(p.id);
   };
@@ -466,6 +469,13 @@ function NewProjectForm({ onCancel, onCreated }: { onCancel: () => void; onCreat
           </span>
         )}
       </div>
+      <label htmlFor="np-details" className="mt-3 flex items-start gap-2 rounded-md border border-ink-200 bg-ink-50 p-3 text-sm">
+        <input id="np-details" type="checkbox" className="mt-0.5" checked={details} onChange={(e) => setDetails(e.target.checked)} />
+        <span>
+          <span className="font-medium">Show extra details (optional)</span>
+          <span className="block text-xs text-ink-500">Column grid with labels, columns, beams, footings, furniture symbols and stair steps on the plan and in 3D. An indicative layout with placeholder sizes, not a structural design. You can switch it off any time in the project settings.</span>
+        </span>
+      </label>
       <p className="mt-2 text-xs text-ink-500">Tip: a 25-gaj plot is about 225 sq ft, for example 15 × 15 ft.</p>
       <div className="sticky bottom-0 -mx-4 mt-4 flex gap-2 border-t border-ink-100 bg-white px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:px-0 sm:py-0">
         <button type="submit" className={btnPrimary}>Create project</button>
