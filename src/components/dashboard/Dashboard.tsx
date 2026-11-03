@@ -18,6 +18,8 @@ import { applyOption, DEFAULT_AUTODESIGN_INPUT, generateOptions } from "@/lib/la
 import { BRAND } from "@/lib/brand";
 import { planToSvg } from "@/lib/export/svg";
 import { btn, btnDanger, btnPrimary, cardCls, Disclaimer, inputCls, Label } from "../ui/Field";
+import AccountMenu from "../auth/AccountMenu";
+import { useAuth } from "../auth/AuthGate";
 import { IconCube, IconCalc, IconDownload, IconLayers, IconMagic, IconPlan, IconRuler, IconShield, IconTree, IconUpload, Logo } from "../ui/Icons";
 
 function Thumb({ p }: { p: Project }) {
@@ -102,6 +104,10 @@ const STEPS: Array<[string, string]> = [
 ];
 
 export default function Dashboard() {
+  const auth = useAuth();
+  const contactEmail = auth.contact.email || BRAND.email;
+  const contactPhone = auth.contact.phone || BRAND.phone;
+  const contactPhoneShown = auth.contact.phone || BRAND.phoneDisplay;
   const router = useRouter();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [persistent, setPersistent] = useState(true);
@@ -176,6 +182,7 @@ export default function Dashboard() {
             <button className={btnPrimary} onClick={() => setShowForm(true)}>
               + New project
             </button>
+            <AccountMenu />
           </div>
         </div>
       </header>
@@ -184,7 +191,7 @@ export default function Dashboard() {
         <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-10 md:grid-cols-[1.1fr_0.9fr] md:py-14">
           <div>
             <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-semibold text-brand-700">
-              <IconShield /> Free, runs in your browser, nothing is uploaded
+              <IconShield /> {auth.enabled ? "Free, projects are saved to your account" : "Free, runs in your browser, nothing is uploaded"}
             </p>
             <h2 className="text-3xl font-bold leading-tight tracking-tight text-ink-900 sm:text-4xl">From plot size to plan, 3D model and estimate in minutes.</h2>
             <p className="mt-3 max-w-xl text-base text-ink-600">
@@ -324,15 +331,15 @@ export default function Dashboard() {
             <p className="text-sm text-ink-600">Questions, feedback or want a custom feature? Get in touch with {BRAND.owner}.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a className={btn} href={`mailto:${BRAND.email}`}>{BRAND.email}</a>
-            <a className={btnPrimary} href={`tel:${BRAND.phone}`}>Call {BRAND.phoneDisplay}</a>
+            <a className={btn} href={`mailto:${contactEmail}`}>{contactEmail}</a>
+            <a className={btnPrimary} href={`tel:${contactPhone.replace(/[^+\d]/g, "")}`}>Call {contactPhoneShown}</a>
           </div>
         </section>
 
         <Disclaimer compact />
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-200 pt-4 text-xs text-ink-500">
           <span className="flex items-center gap-2"><Logo className="h-6 w-6" /> <strong className="text-ink-700">{BRAND.product}</strong> {BRAND.credit}</span>
-          <span><a className="hover:text-brand-700" href={`mailto:${BRAND.email}`}>{BRAND.email}</a> · <a className="hover:text-brand-700" href={`tel:${BRAND.phone}`}>{BRAND.phoneDisplay}</a> · {BRAND.tagline} &copy; {new Date().getFullYear()} {BRAND.owner}</span>
+          <span><a className="hover:text-brand-700" href={`mailto:${contactEmail}`}>{contactEmail}</a> · <a className="hover:text-brand-700" href={`tel:${contactPhone.replace(/[^+\d]/g, "")}`}>{contactPhoneShown}</a> · {BRAND.tagline} &copy; {new Date().getFullYear()} {BRAND.owner}</span>
         </footer>
       </main>
     </div>

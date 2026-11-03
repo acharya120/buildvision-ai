@@ -20,6 +20,7 @@ import EstimatePanel from "./EstimatePanel";
 import DrawingsPanel from "./DrawingsPanel";
 import AssistantPanel from "./AssistantPanel";
 import AutoDesignPanel from "./AutoDesignPanel";
+import AccountMenu from "../auth/AccountMenu";
 
 type Tab = "plan" | "auto" | "3d" | "estimate" | "drawings" | "assistant";
 const TABS: Array<[Tab, string, string, () => ReactElement]> = [
@@ -153,6 +154,7 @@ export default function Workspace() {
             <IconDownload />
             <span className="hidden lg:inline">Download backup</span>
           </button>
+          <AccountMenu />
         </div>
         {saveState === "failed" && (
           <p className="bg-red-50 px-3 py-1 text-xs font-semibold text-red-800 sm:hidden" role="alert">{saveText}</p>

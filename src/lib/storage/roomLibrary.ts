@@ -1,5 +1,6 @@
 import { DEFAULT_ROOM_SIZES, type RoomDefault } from "../model/defaults";
 import type { RoomType } from "../model/types";
+import { cloudHooks } from "./cloudHooks";
 
 const KEY = "buildvision.roomLibrary.v1";
 
@@ -29,7 +30,9 @@ export function loadLibrary(): RoomLibrary {
 
 export function saveLibrary(lib: RoomLibrary): void {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(lib));
+    const json = JSON.stringify(lib);
+    window.localStorage.setItem(KEY, json);
+    cloudHooks.kv?.("roomLibrary", json);
   } catch {
     /* ignore */
   }

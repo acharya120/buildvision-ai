@@ -1,4 +1,5 @@
 import type { Project } from "../model/types";
+import { cloudHooks } from "./cloudHooks";
 
 const KEY = "buildvision.ratePresets.v1";
 
@@ -32,7 +33,9 @@ export function loadPresets(): RatePreset[] {
 
 export function savePresets(list: RatePreset[]): boolean {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(list.slice(0, 20)));
+    const json = JSON.stringify(list.slice(0, 20));
+    window.localStorage.setItem(KEY, json);
+    cloudHooks.kv?.("ratePresets", json);
     return true;
   } catch {
     return false;

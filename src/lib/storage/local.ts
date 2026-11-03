@@ -1,6 +1,7 @@
 import type { Project } from "../model/types";
 import { parseProject } from "../model/schema";
 import { newId } from "../model/ids";
+import { cloudHooks } from "./cloudHooks";
 
 const KEY = "buildvision.projects.v1";
 
@@ -65,16 +66,29 @@ export function loadProject(id: string): Project | null {
 }
 
 /** Returns false when the browser refused to store the data (the project is still kept in memory). */
-export function saveProject(p: Project): boolean {
+export function saveProject(p: Project, opts?: { skipCloud?: boolean }): boolean {
   const all = readAll();
   all[p.id] = p;
-  return writeAll(all);
+  const ok = writeAll(all);
+  if (!opts?.skipCloud) cloudHooks.saveProject?.(p);
+  return ok;
 }
 
 export function deleteProject(id: string): void {
   const all = readAll();
   delete all[id];
   writeAll(all);
+  cloudHooks.deleteProject?.(id);
+}
+
+/** Removes every project from this browser (used when logging out, the copies stay in the account). */
+export function clearLocalProjects(): void {
+  memory = {};
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function duplicateProject(id: string): Project | null {
