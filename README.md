@@ -1,6 +1,6 @@
 # BuildVision AI
 
-A browser-based tool for **conceptual** house design: draw a to-scale floor plan, view it in 3D, get dimensioned drawings, and see a **preliminary** quantity estimate. It runs entirely in the browser (projects are stored in your browser), needs no account, no database and no paid API.
+A browser-based tool for **conceptual** house design: draw a to-scale floor plan, view it in 3D, get dimensioned drawings, and see a **preliminary** quantity estimate. By default it runs entirely in the browser (projects are stored in your browser), with no account, no database and no paid API. Optionally, connect a **Neon** database to turn on registration with email verification, login, cloud-saved projects and an admin-only Settings panel: see [ACCOUNTS_SETUP.md](./ACCOUNTS_SETUP.md).
 
 > **Important:** BuildVision AI provides conceptual design, visualization, and preliminary estimation tools. Outputs are not automatically approved architectural drawings, structural engineering designs, or construction instructions. A qualified architect and structural engineer must review and approve all relevant plans before construction. Soil conditions, foundations, reinforcement, beams, columns, slabs, staircase safety, fire safety, accessibility, setbacks, local building regulations, and other site-specific requirements must be professionally assessed.
 
@@ -16,7 +16,7 @@ This project was written in an environment where the npm registry was blocked, s
 |---|---|
 | TypeScript `strict` on all logic modules (model, geometry, validation, estimate, layout, assistant, export except PDF) | Passed |
 | TypeScript on UI code, against hand-written stand-in type stubs for React/Next/Three | Passed (stubs are weaker than the real types) |
-| 137 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
+| 153 unit tests (`tests/`) | Passed, run with a small stand-in for the Vitest API. The real `vitest run` has not been run |
 | Dashboard, plan editor, Auto design tab (generate, apply, undo, infeasible-plot message), estimate (incl. rate presets), drawings and assistant screens, bundled with esbuild and driven in headless Chromium (place/move/resize rooms, numeric edits, undo/redo, walls, doors, zoom, floors, estimate maths, import rejection, form validation) | Passed with **no console errors**. Tailwind styling was not present in that run, so **visual layout has not been checked** |
 | SVG plan, elevation and section output | Rendered and inspected visually |
 | DXF file opened in a CAD program | **Not done** (only the file structure is unit-tested) |
@@ -24,6 +24,7 @@ This project was written in an environment where the npm registry was blocked, s
 | PDF export (jsPDF) | **Not run** |
 | PNG export, file downloads | **Not run** in a real build |
 | Structure/detail layers in 3D (columns, beams, footings) | **Not run in WebGL.** Only a render-tree smoke test (no crashes; ~9,000 meshes for a 10-floor hospital with details) and unit tests of the column/beam/grid logic |
+| Accounts: register, email code, login, admin Settings, Neon sync | Unit-tested (16 tests) and driven in headless Chromium against the real API route code with an **in-memory database and a fake mailer**. **Never run against a real Neon database or real Gmail**, and the `@neondatabase/serverless` and `nodemailer` packages were not installed here |
 | `npm run build`, `npm run lint`, `npm run test`, `npm run test:e2e` | **Not run** |
 | Vercel deployment | **Not done** |
 
@@ -120,9 +121,9 @@ In 3D use **Structural view (x-ray)** to hide walls, roof and furniture and see 
 - Stairs are a room type plus a simple visual two-flight stair in 3D; rise, going, headroom and landings are not designed or checked. Furniture is generic placeholder boxes that ignore door positions. Door leaves are drawn closed.
 - No roof design (flat slab only), no site levels, no materials in elevations/sections.
 - Touch screens: single-finger drag works; pinch-zoom on the 2D plan is not implemented (use the +/- buttons). The 3D view uses the library's built-in touch controls.
-- Projects and the room library are stored per browser; clearing browser data deletes them, so download backups.
+- Without a database, projects and the room library are stored per browser; clearing browser data deletes them, so download backups. With accounts on they are also saved to Neon.
 - The estimate rates are per m², m³ or piece regardless of the display unit system.
-- No AI-powered editing and no cloud storage/login in this version (see roadmap).
+- No AI-powered editing. Accounts (optional) have no forgot-password, no change-email and no two-factor login yet.
 - Dependency versions use ranges and there is no lockfile, because npm was unavailable when this was generated; the first install creates one.
 
 ## Roadmap (not implemented)
@@ -149,6 +150,8 @@ src/lib/layout/          deterministic auto-arrange
 src/lib/assistant/       rule-based assistant
 src/lib/export/          SVG, drawings, CSV, OBJ, PDF, download helpers
 src/lib/storage/         browser storage (projects, room library)
+src/server/              accounts, email codes, mail, Neon storage (server only)
+src/app/api/             API routes for login, projects, admin settings
 src/lib/state/           undo/redo store
 tests/                   Vitest unit tests    e2e/  Playwright journey
 ```

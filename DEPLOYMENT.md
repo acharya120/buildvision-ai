@@ -63,3 +63,10 @@ npm run dev
 ```
 
 and open http://localhost:3000. Run `npm test` for the unit tests and `npm run typecheck` for TypeScript.
+
+
+---
+
+## Optional: turn on login, email codes and the Neon database
+
+The site works without this. To add registration, email verification, an admin Settings panel and cloud-saved projects, follow [ACCOUNTS_SETUP.md](./ACCOUNTS_SETUP.md).
