@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/client/api";
 import { NEED_LABELS, AI_LIMITS, type AiBrief } from "@/lib/ai/plan";
-import { applyOption, type DesignOption } from "@/lib/layout/autodesign";
+import { applyOption, DEFAULT_AUTODESIGN_INPUT, type DesignOption } from "@/lib/layout/autodesign";
+import { generateHouseWithFit } from "@/lib/layout/autodesignFit";
 import { BUILDING_TYPE_LABELS } from "@/lib/model/defaults";
 import { planToSvg } from "@/lib/export/svg";
 import { validateProject, countBySeverity } from "@/lib/validation/validate";
@@ -18,6 +19,7 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
   const ws = useWorkspace();
   const { project } = ws.state;
   const [status, setStatus] = useState<Status | null>(null);
+  const [unavailable, setUnavailable] = useState("Checking whether an AI service is connected…");
   const [provider, setProvider] = useState("");
   const [bedrooms, setBedrooms] = useState("2");
   const [floors, setFloors] = useState(String(project.floors.length));
@@ -35,10 +37,14 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
   useEffect(() => {
     let live = true;
     void api<Status>("/api/ai/status").then((r) => {
-      if (live && r.ok) {
+      if (!live) return;
+      if (r.ok && r.data.enabled) {
         setStatus(r.data);
         setProvider(r.data.defaultProvider);
-      }
+      } else if (r.ok) setUnavailable("No AI service is connected yet, or the owner switched AI mode off. Open Settings, then AI mode, paste a key in a service's box and press Save and connect.");
+      else if (r.status === 401) setUnavailable("Log in to use AI mode.");
+      else if (r.status === 503) setUnavailable("AI keys are stored in the database, which is not connected on this site yet (see ACCOUNTS_SETUP.md).");
+      else setUnavailable(r.data.error ?? "Could not check the AI connection.");
     });
     return () => {
       live = false;
@@ -52,7 +58,7 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
     return { project: applied.project, counts: countBySeverity(issues), warnings: issues.filter((i) => i.severity === "warning").map((i) => i.message), failed: applied.failed };
   }, [res, project]);
 
-  if (!status || !status.enabled) return null;
+  const live = !!status?.enabled;
 
   const generate = async () => {
     setBusy(true);
@@ -74,6 +80,22 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
       budget: project.targetBudget ?? null,
       unitSystem: project.unitSystem,
     };
+    if (!live) {
+      // no AI service available: same form, rule-based generator, clearly labelled
+      const has = (k: string) => needs.includes(k);
+      const out = generateHouseWithFit(project.plot, {
+        ...DEFAULT_AUTODESIGN_INPUT,
+        floors: Math.min(4, Math.max(1, brief.floors)),
+        bedrooms: Math.min(5, Math.max(1, brief.bedrooms || 1)),
+        includeDining: has("dining"), includeStudy: has("study"), includeGarage: has("garage") || has("parking"), includeBalcony: has("balcony") || has("terrace"), includeUtility: has("utility"),
+        attachedBathMaster: has("attached-bath"), frontSide: front, setbackFront: brief.setbackFront, setbackRear: brief.setbackRear, setbackSide: brief.setbackSide, northAngle: brief.northAngle,
+      });
+      setBusy(false);
+      if (!out.options.length) return setErr(out.errors.join(" ") || "Nothing fits this plot with these values.");
+      const o = out.options[0];
+      setRes({ option: { ...o, label: "Rule-based design (no AI connected)", notes: [...o.notes, "No AI service was available, so the rule-based generator made this from your form. Connect an AI service in Settings to get AI designs."] }, suggestions: [], provider: "Rule-based generator", model: "built-in", attempts: 1 });
+      return;
+    }
     const r = await api<Result>("/api/ai/design", "POST", { provider, plot: project.plot, brief });
     setBusy(false);
     if (r.ok) setRes(r.data);
@@ -101,11 +123,12 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
         Fill in your needs and an AI service suggests a floor plan for this plot. It works only for building layouts in this software. Its answer is checked (inside the plot, no overlaps, every room reachable by a door) and then drawn like any other design, so you can edit it. <strong>AI can make mistakes; this is a concept, not an approved drawing.</strong>
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {status.providers.length > 1 && (
+        {!live && <p role="status" className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">{unavailable} Until then, the button below builds a design with the built-in rule-based generator from the same form.</p>}
+      {live && status!.providers.length > 1 && (
           <div>
             <Label htmlFor="ai-prov">AI service</Label>
             <select id="ai-prov" className={inputCls} value={provider} onChange={(e) => setProvider(e.target.value)}>
-              {status.providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              {status!.providers.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </div>
         )}
@@ -134,8 +157,8 @@ export default function AiDesignCard({ onApplied }: { onApplied: () => void }) {
         <Label htmlFor="ai-notes">Anything else (optional, max {AI_LIMITS.notes} characters)</Label>
         <textarea id="ai-notes" rows={3} maxLength={AI_LIMITS.notes} className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Example: a family of five, elderly parents need a ground-floor bedroom, large kitchen, plenty of light" />
       </div>
-      <p className="mt-2 text-xs text-ink-500">The AI also gets your plot ({project.plot.width.toFixed(1)} × {project.plot.depth.toFixed(1)} m{project.plot.polygon ? ", shaped" : ""}), building type, north direction and budget from the project. Each design counts against the daily limit ({status.dailyLimit}).</p>
-      <div className="mt-3"><button className={btnPrimary} disabled={busy} onClick={() => void generate()}>{busy ? "AI is designing… this can take up to a minute" : "Create with AI"}</button></div>
+      <p className="mt-2 text-xs text-ink-500">The AI also gets your plot ({project.plot.width.toFixed(1)} × {project.plot.depth.toFixed(1)} m{project.plot.polygon ? ", shaped" : ""}), building type, north direction and budget from the project. Each design counts against the daily limit ({status?.dailyLimit ?? 20}).</p>
+      <div className="mt-3"><button className={btnPrimary} disabled={busy} onClick={() => void generate()}>{busy ? "Designing… this can take up to a minute" : live ? "Create with AI" : "Create design from this form"}</button></div>
       {err && <div role="alert" className="mt-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">{err}</div>}
       {res && preview && fl && (
         <article className="mt-4 rounded-lg border border-ink-200 bg-white p-3" aria-label="AI design">
