@@ -1,5 +1,7 @@
 "use client";
 
+import BrandLogo from "../ui/BrandLogo";
+import { useBrand } from "@/lib/client/brand";
 import { AREA_UNITS, SHAPE_LABELS, parseCorners, plotFromArea, plotFromCorners, toSqm, type ShapeKey } from "@/lib/model/plotShapes";
 import type { Plot } from "@/lib/model/types";
 import { plotArea } from "@/lib/model/plotShapes";
@@ -107,6 +109,7 @@ const STEPS: Array<[string, string]> = [
 ];
 
 export default function Dashboard() {
+  const brand = useBrand();
   const auth = useAuth();
   const contactEmail = auth.contact.email || BRAND.email;
   const contactPhone = auth.contact.phone || BRAND.phone;
@@ -170,10 +173,10 @@ export default function Dashboard() {
       <header className="sticky top-0 z-20 border-b border-ink-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Logo className="h-10 w-10" />
+            <BrandLogo className="h-10 w-10" />
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-bold leading-tight text-ink-900">BuildVision AI</h1>
-              <p className="truncate text-xs font-medium text-brand-700">{BRAND.credit}</p>
+              <h1 className="truncate text-lg font-bold leading-tight text-ink-900">{brand.name}</h1>
+              <p className="truncate text-xs font-medium text-brand-700">{brand.owner ? `by ${brand.owner}` : brand.tagline}</p>
             </div>
           </div>
           <div className="flex shrink-0 gap-2">

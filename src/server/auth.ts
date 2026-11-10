@@ -1,3 +1,5 @@
+import { getBrand } from "./brand";
+import { renderEmail } from "./emailTemplate";
 import { BRAND } from "@/lib/brand";
 import { hashPassword, makeCode, randomId, randomToken, safeEqual, sha256, verifyPassword } from "./crypto";
 import type { Env } from "./env";
@@ -52,12 +54,16 @@ async function sendCode(ctx: Ctx, user: UserRow, force: boolean): Promise<Fail |
   const code = makeCode();
   await ctx.repo.saveCode({ userId: user.id, codeHash: sha256(`${user.id}:${code}`), expiresAt: now + CODE_MINUTES * 60_000, attempts: 0, createdAt: now });
   try {
-    await ctx.mailer.send({
-      to: user.email,
-      subject: `${code} is your ${BRAND.product} verification code`,
-      text: `Hello ${user.name},\n\nYour ${BRAND.product} verification code is ${code}\n\nIt works for ${CODE_MINUTES} minutes. If you did not create an account, ignore this email.\n\n${BRAND.product} ${BRAND.credit}`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:480px"><h2 style="color:#178263">${BRAND.product}</h2><p>Hello ${escapeHtml(user.name)},</p><p>Your verification code is</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold">${code}</p><p>It works for ${CODE_MINUTES} minutes. If you did not create an account, ignore this email.</p><p style="color:#667">${BRAND.product} ${BRAND.credit}</p></div>`,
+    const brand = await getBrand(ctx.repo);
+    const mail = renderEmail(brand, ctx.env, {
+      preheader: `Your ${brand.systemName} verification code is ${code}`,
+      heading: "Verify your email address",
+      paragraphs: [`Hello ${user.name},`, `Welcome to ${brand.systemName}. Please enter this 6 digit code on the sign-up page to confirm your email address.`],
+      code,
+      codeNote: `This code works for ${CODE_MINUTES} minutes.`,
+      after: ["If you did not create an account, you can safely ignore this email. Nobody can use your address without this code."],
     });
+    await ctx.mailer.send({ to: user.email, subject: `${code} is your ${brand.systemName} verification code`, text: mail.text, html: mail.html });
   } catch (e) {
     await ctx.repo.deleteCode(user.id);
     return fail(502, `The verification email could not be sent. ${e instanceof Error ? e.message : ""}`.trim());

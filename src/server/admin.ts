@@ -2,6 +2,8 @@ import { buildStoredMail, cleanAppPassword, loadMailConfig, sendWithConfig, veri
 import type { Ctx } from "./auth";
 import { getGeneral, saveGeneral } from "./settings";
 import { aiOverview } from "./ai";
+import { getBrand } from "./brand";
+import { renderEmail } from "./emailTemplate";
 import type { UserRow } from "./repo";
 
 type Fail = { ok: false; status: number; error: string };
@@ -62,7 +64,15 @@ export async function sendTestMail(ctx: Ctx, to: string): Promise<{ ok: true; fr
   if (!cfg) return fail(400, "No mail app is connected yet.");
   if (!EMAIL_OK.test(to)) return fail(400, "Enter a valid address to send the test to.");
   try {
-    await sendWithConfig(cfg, { to, subject: "BuildVision AI test email", text: `This is a test. Mail is being sent from ${cfg.user}.` });
+    const brand = await getBrand(ctx.repo);
+    const mail = renderEmail(brand, ctx.env, {
+      preheader: "Your mail connection works.",
+      heading: "Your email connection works",
+      paragraphs: [`This is a test message from ${brand.systemName}.`, `Emails are being sent from ${cfg.user}. This is how verification and other emails will look to your users.`],
+      code: "123456",
+      codeNote: "Example of a verification code",
+    });
+    await sendWithConfig(cfg, { to, subject: `${brand.systemName} test email`, text: mail.text, html: mail.html });
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : "Sending failed.");
   }

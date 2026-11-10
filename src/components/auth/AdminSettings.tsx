@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/lib/client/api";
 import { btn, btnDanger, btnPrimary, inputCls } from "../ui/Field";
+import { refreshBrand } from "@/lib/client/brand";
+import { pictureToDataUrl } from "@/lib/client/image";
 
 interface Overview {
   general: { allowRegistration: boolean; contactEmail: string; contactPhone: string };
@@ -25,8 +27,8 @@ interface UserRow {
   createdAt: number;
   lastLogin: number;
 }
-type Tab = "general" | "mail" | "ai" | "users" | "database";
-const TABS: Array<[Tab, string]> = [["general", "General"], ["mail", "Email"], ["ai", "AI mode"], ["users", "Users"], ["database", "Database"]];
+type Tab = "general" | "system" | "mail" | "ai" | "users" | "database";
+const TABS: Array<[Tab, string]> = [["general", "General"], ["system", "System profile"], ["mail", "Email"], ["ai", "AI mode"], ["users", "Users"], ["database", "Database"]];
 
 function Field({ label, value, onChange, type = "text", hint, placeholder, autoComplete }: { label: string; value: string; onChange: (v: string) => void; type?: string; hint?: string; placeholder?: string; autoComplete?: string }) {
   const id = useId();
@@ -81,6 +83,7 @@ export default function AdminSettings({ onClose, myId }: { onClose: () => void; 
           {loadErr && <Msg ok={false}>{loadErr}</Msg>}
           {!ov && !loadErr && <p className="text-sm text-ink-600">Loading…</p>}
           {ov && tab === "general" && <General ov={ov} reload={load} />}
+          {ov && tab === "system" && <SystemProfile />}
           {ov && tab === "mail" && <Mail ov={ov} reload={load} />}
           {ov && tab === "ai" && <AiMode ov={ov} reload={load} />}
           {ov && tab === "users" && <Users myId={myId} />}
@@ -334,6 +337,87 @@ function AiMode({ ov, reload }: { ov: Overview; reload: () => Promise<void> }) {
       </div>
       {a.providers.map((p) => <AiBox key={p.id} p={p} isDefault={a.defaultProvider === p.id} appSecret={ov.env.appSecret} reload={reload} />)}
       <p className="text-[11px] text-ink-500">Usage is billed by the AI service to the key owner. AI output can be wrong: every AI design is checked by this software (inside the plot, no overlaps, every room reachable) and is labelled as an AI suggestion, but it is not an approved drawing.</p>
+    </div>
+  );
+}
+
+
+interface BrandForm { systemName: string; tagline: string; purpose: string; ownerName: string; website: string; address: string; footerNote: string; color: string; logo: string }
+
+function SystemProfile() {
+  const [f, setF] = useState<BrandForm | null>(null);
+  const [logo, setLogo] = useState<string | undefined>(undefined); // undefined keep, "" none (null sent), data URL new
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void api<{ brand: BrandForm }>("/api/admin/brand").then((r) => {
+      if (r.ok) setF(r.data.brand);
+      else setMsg({ ok: false, text: r.data.error ?? "Could not load." });
+    });
+  }, []);
+  if (!f) return msg ? <Msg ok={false}>{msg.text}</Msg> : <p className="text-sm text-ink-600">Loading…</p>;
+  const set = (k: keyof BrandForm) => (v: string) => setF({ ...f, [k]: v });
+  const shown = logo === undefined ? f.logo : logo;
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    const r = await pictureToDataUrl(file, { maxSide: 256, type: "image/png", maxChars: 260_000 });
+    if (r.ok) {
+      setLogo(r.url);
+      setMsg(null);
+    } else setMsg({ ok: false, text: r.error });
+  };
+  const save = async () => {
+    setBusy(true);
+    setMsg(null);
+    const body: Record<string, unknown> = { ...f };
+    delete body.logo;
+    if (logo !== undefined) body.logo = logo === "" ? null : logo;
+    const r = await api<{ brand: BrandForm }>("/api/admin/brand", "PUT", body);
+    setBusy(false);
+    if (r.ok) {
+      setF(r.data.brand);
+      setLogo(undefined);
+      setMsg({ ok: true, text: "Saved. The new name and logo now show on the login page, the headers and in every email." });
+      void refreshBrand();
+    } else setMsg({ ok: false, text: r.data.error ?? "Could not save." });
+  };
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-ink-700">These details describe your system. They appear on the login page, the app header, the browser tab and in every email. Anything you leave empty is simply not shown.</p>
+      <div className="flex items-center gap-3 rounded-md border border-ink-200 p-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {shown ? <img src={shown} alt="Current logo" className="h-16 w-16 rounded-lg border border-ink-200 bg-white object-contain" /> : <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-ink-300 text-[10px] text-ink-500">built-in logo</div>}
+        <div className="space-y-1">
+          <label className="block text-xs font-semibold text-ink-700" htmlFor="brand-logo">Logo (PNG, JPEG or WebP, shrunk to 256 px)</label>
+          <input id="brand-logo" type="file" accept="image/png,image/jpeg,image/webp" className="text-xs" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+          {shown && <button type="button" className="text-xs font-medium text-red-700 hover:underline" onClick={() => setLogo("")}>Remove logo</button>}
+        </div>
+      </div>
+      <Field label="System name" value={f.systemName} onChange={set("systemName")} hint="Shown in headers, the browser tab and emails." />
+      <Field label="Tagline" value={f.tagline} onChange={set("tagline")} placeholder="Plan it. See it. Estimate it." />
+      <div>
+        <label htmlFor="brand-purpose" className="mb-1 block text-xs font-semibold text-ink-700">Purpose / about this system</label>
+        <textarea id="brand-purpose" rows={3} maxLength={400} className={inputCls} value={f.purpose} onChange={(e) => set("purpose")(e.target.value)} />
+        <p className="mt-1 text-[11px] text-ink-500">Shown at the bottom of every email.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Owner / company name" value={f.ownerName} onChange={set("ownerName")} hint='Shown as "by …" under the system name.' />
+        <Field label="Website" value={f.website} onChange={set("website")} placeholder="https://example.com" />
+      </div>
+      <Field label="Address" value={f.address} onChange={set("address")} />
+      <Field label="Email footer note" value={f.footerNote} onChange={set("footerNote")} placeholder="Example: Need help? Reply to this email." />
+      <div>
+        <label htmlFor="brand-color" className="mb-1 block text-xs font-semibold text-ink-700">Brand colour in emails</label>
+        <div className="flex items-center gap-2">
+          <input id="brand-color" type="color" value={/^#[0-9a-fA-F]{6}$/.test(f.color) ? f.color : "#178263"} onChange={(e) => set("color")(e.target.value)} className="h-9 w-14 rounded border border-ink-300" />
+          <code className="text-xs text-ink-600">{f.color}</code>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button className={btnPrimary} disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Save system profile"}</button>
+      </div>
+      {msg && <Msg ok={msg.ok}>{msg.text}</Msg>}
+      <p className="text-[11px] text-ink-500">To see the new email design, save here, then use Email &gt; Send a test email. Logos in emails need the public site address: it is read from Vercel automatically, or set APP_URL (see the setup guide). The construction-safety disclaimer is not editable.</p>
     </div>
   );
 }

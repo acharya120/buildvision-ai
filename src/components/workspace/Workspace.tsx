@@ -1,5 +1,7 @@
 "use client";
 
+import BrandLogo from "../ui/BrandLogo";
+import { useBrand } from "@/lib/client/brand";
 import type { ReactElement } from "react";
 import { BRAND } from "@/lib/brand";
 import Link from "next/link";
@@ -34,6 +36,7 @@ const TABS: Array<[Tab, string, string, () => ReactElement]> = [
 type PlanPane = "canvas" | "rooms" | "props";
 
 export default function Workspace() {
+  const brand = useBrand();
   const ws = useWorkspace();
   const { project, activeFloorId } = ws.state;
   const [tab, setTab] = useState<Tab>("plan");
@@ -133,8 +136,8 @@ export default function Workspace() {
       <header className="border-b border-ink-200 bg-white">
         <div className="flex items-center gap-2 px-3 py-2 sm:gap-3">
           <Link href="/" className="flex shrink-0 items-center gap-2 text-sm font-semibold text-ink-800 hover:text-brand-700" aria-label="Back to dashboard">
-            <Logo className="h-8 w-8" />
-            <span className="hidden leading-tight md:block">BuildVision AI<span className="block text-[10px] font-medium text-brand-700">{BRAND.credit}</span></span>
+            <BrandLogo className="h-8 w-8" />
+            <span className="hidden leading-tight md:block">{brand.name}<span className="block text-[10px] font-medium text-brand-700">{brand.owner ? `by ${brand.owner}` : brand.tagline}</span></span>
           </Link>
           <div className="min-w-0 flex-1 sm:w-64 sm:flex-none">
             <TextField label="Project name" value={project.name} maxLength={80} onCommit={(v) => ws.commit(renameProject(ws.getState().project, v))} />

@@ -1,5 +1,7 @@
 "use client";
 
+import BrandLogo from "../ui/BrandLogo";
+import { useBrand } from "@/lib/client/brand";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/client/api";
 import { flushCloud, startCloud, stopCloud } from "@/lib/client/cloud";
@@ -41,6 +43,7 @@ type Phase = "loading" | "off" | "out" | "syncing" | "in" | "problem";
  * With a database, nobody gets in without registering, verifying their email and logging in.
  */
 export default function AuthGate({ children }: { children: React.ReactNode }) {
+  const brand = useBrand();
   const [phase, setPhase] = useState<Phase>("loading");
   const [user, setUser] = useState<AccountUser | null>(null);
   const [allowReg, setAllowReg] = useState(true);
@@ -112,8 +115,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-ink-50 p-4">
       <div className="w-full max-w-sm rounded-xl border border-ink-200 bg-white p-6 text-center shadow-sm">
-        <Logo className="mx-auto h-12 w-12" />
-        <p className="mt-3 text-sm font-semibold text-ink-900">{BRAND.product}</p>
+        <BrandLogo className="mx-auto h-12 w-12" />
+        <p className="mt-3 text-sm font-semibold text-ink-900">{brand.name}</p>
         {phase === "problem" ? (
           <>
             <p className="mt-3 text-sm text-red-700" role="alert">{problem}</p>

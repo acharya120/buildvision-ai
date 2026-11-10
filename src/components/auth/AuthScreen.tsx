@@ -1,5 +1,7 @@
 "use client";
 
+import BrandLogo from "../ui/BrandLogo";
+import { useBrand } from "@/lib/client/brand";
 import { useEffect, useId, useState } from "react";
 import { api } from "@/lib/client/api";
 import { BRAND } from "@/lib/brand";
@@ -30,6 +32,7 @@ function Input({ label, type = "text", value, onChange, autoComplete, hint, inpu
 }
 
 export default function AuthScreen({ allowRegistration, onLoggedIn }: { allowRegistration: boolean; onLoggedIn: (u: AccountUser) => void }) {
+  const brand = useBrand();
   const [mode, setMode] = useState<Mode>(allowRegistration ? "register" : "login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -102,10 +105,10 @@ export default function AuthScreen({ allowRegistration, onLoggedIn }: { allowReg
     <main className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-b from-brand-50 to-white p-4">
       <div className="w-full max-w-md">
         <div className="mb-4 flex items-center justify-center gap-3">
-          <Logo className="h-12 w-12" />
+          <BrandLogo className="h-12 w-12" />
           <div>
-            <h1 className="text-xl font-bold leading-tight text-ink-900">{BRAND.product}</h1>
-            <p className="text-xs font-medium text-brand-700">{BRAND.credit}</p>
+            <h1 className="text-xl font-bold leading-tight text-ink-900">{brand.name}</h1>
+            <p className="text-xs font-medium text-brand-700">{brand.owner ? `by ${brand.owner}` : brand.tagline}</p>
           </div>
         </div>
         <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm sm:p-6">
