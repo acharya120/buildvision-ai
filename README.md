@@ -201,3 +201,13 @@ Verification notes: unit tests (170) cover units, all shapes from 30 m2 to 20 ha
 Admin Settings has an **AI mode** tab with a separate key box for ChatGPT, Gemini, Claude, Mistral, Groq, DeepSeek, Grok and OpenRouter. Paste a key, press Save and connect, and customers get an "AI mode" card in Auto design that suggests a floor plan from the form data. Everything the AI returns is checked and then drawn like any other design. Setup, safety rules and costs: see AI_SETUP.md. Needs the accounts/database setup. Without it nothing changes.
 
 Verification notes: 183 unit tests (including mocked calls in each provider's request format, key secrecy, repair loop, daily limit, shaped plots) and a browser run of the admin box and the customer card against the real route code with a mocked AI service. No real ChatGPT, Gemini or Claude account was used, so the exact request/response formats and default model names are untested against the live services; if the connection test reports a problem, the message tells you what to change.
+
+
+## Professional emails, system profile and user profiles
+
+- **Emails.** Every email (verification code, test email) now uses one designed layout: coloured header with your logo, system name and tagline, a large code box, and a footer with your purpose, owner, address, website and note. A plain-text version is sent too.
+- **Settings > System profile (admin only).** Set system name, tagline, purpose, owner/company, website, address, email footer note, email colour and logo. They appear on the login page, the app headers, the browser tab and in emails. Nothing saved means the old look. The construction-safety disclaimer is not editable. The logo is shown in emails when the public site address is known (read from Vercel automatically, or set APP_URL).
+- **My profile (every logged-in user).** After the first login a profile window opens once (Skip is allowed); afterwards it is in the account menu. Fields: profile picture, profession, organisation, address, city, state, postal code, country, website, about. All optional, stored per user in the database.
+- Pictures: PNG, JPEG or WebP only (SVG refused), shrunk in the browser (logo 256 px, profile 256 px square) and checked on the server.
+
+Verification notes: 190 unit tests; browser run with the real route code: admin saves a logo and name, the header and tab title change, a new member receives the designed email, is offered the profile once, saves details and photo, and cannot reach admin routes. The look of the email in Gmail/Outlook was checked only as an image rendered in Chromium, and the logo-in-email path needs a deployed public address, so please send yourself a test email after deploying.
