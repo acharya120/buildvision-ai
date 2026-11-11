@@ -211,3 +211,39 @@ Verification notes: 183 unit tests (including mocked calls in each provider's re
 - Pictures: PNG, JPEG or WebP only (SVG refused), shrunk in the browser (logo 256 px, profile 256 px square) and checked on the server.
 
 Verification notes: 190 unit tests; browser run with the real route code: admin saves a logo and name, the header and tab title change, a new member receives the designed email, is offered the profile once, saves details and photo, and cannot reach admin routes. The look of the email in Gmail/Outlook was checked only as an image rendered in Chromium, and the logo-in-email path needs a deployed public address, so please send yourself a test email after deploying.
+
+## Studio tab (optional additions)
+
+A new **Studio** tab sits beside the existing tabs. Nothing in the existing tabs was changed, and the Studio only changes your design when you press a button that says so (every such change can be undone).
+
+- **Design review**: rule-of-thumb checks for daylight (window area about 10% of floor), cross ventilation, bathroom ventilation, room size and proportion, stairs lining up between floors, a ground-floor entrance, bathrooms per bedroom and kitchen position. "Add a window" buttons fix the window findings. With an AI service connected, **Get AI suggestions** asks the AI for extra advice (only room names, types and sizes are sent; it counts towards the daily AI limit; it never edits the plan).
+- **Interior**: furniture placed by rules (against walls, outside door swings, tall pieces away from windows, walking space kept), room-by-room tips, an interior sheet per floor (SVG/PNG) and a furniture schedule (CSV).
+- **Elevations**: detailed front, rear, left and right elevations with levels, plinth, lintels, sills, parapet and overall dimensions (SVG/PNG). The front is the bottom edge of the plan.
+- **Materials & cost**: bricks, cement, sand, aggregate, steel, tiles, paint, waterproofing, doors and windows. Quantities come from the plan plus editable rule-of-thumb factors (marked "assumption"). **No prices are pre-filled**; you enter your own rates, plus labour, contingency and tax percentages. CSV download. The factors are saved in an optional `materials` field of the project; projects without it work exactly as before.
+- **History**: named versions of the design kept in this browser (up to 20 per project), compare with now, restore (a copy of the current design is taken first, and Undo works), and **Duplicate this project**.
+- **PDF pack**: a separate A3 PDF with a cover page, the sheets you tick (elevations, interior, site, structure, materials) and the full notice. The standard PDF in the Export tab is unchanged.
+
+No database changes or migrations are needed. Versions are stored in the browser only.
+
+Verification for this part: 12 new unit tests (202 in total, all passing); the Studio screens were run in a real browser at desktop and phone width (no overflow, buttons clicked). **Not verified**: the real `next build`, the jsPDF drawing-pack PDF itself (jsPDF is not installed in the test setup), and AI suggestions against a real AI service. Please run `npm run build` / deploy and try those once.
+
+## Studio > Analysis (optional, preliminary)
+
+Open **Studio**, then **Analysis (preliminary)**. Everything here is an estimate made by rules and the numbers you type. None of it is a professionally verified calculation or an approval, and each page says so. No page changes your design.
+
+| Page | What it does | Basis |
+| --- | --- | --- |
+| Regulation check | Compares your plan with limits **you** enter: setbacks (with road side), FAR, coverage, height, minimum room sizes, ceiling height, window share. "Fill example values" loads commonly cited minimums as editable examples. | Your numbers; not a building approval |
+| Sun & shadow | Sun position by latitude, date and solar time; ground shadows of every room block; direct-sun hours per window and facade; heat/winter-sun notes. | Textbook solar formulas (about 1°); neighbours and trees not modelled |
+| Ventilation | Wind-from direction; which openings are windward/leeward; opening area vs floor area; cross-ventilation rating per room. | Rule of thumb; not CFD |
+| Vastu | Optional: rooms and entrance by compass sector using the plan's north angle. | Traditional guideline, not scientific or engineering |
+| Electrical & plumbing | Lights, fans, sockets, switches, AC, exhaust, geyser points; WC, basin, shower, sink fixtures; stack and straight-run pipe lengths; connected load; water use and tank size. SVG per floor. | Rule-based placement; a licensed electrician/plumber must design it |
+| Timeline | Phase-by-phase Gantt chart with dates from a start date, crew factor, weather buffer and 5/6-day week. | Rule-of-thumb productivity; replace with the contractor's programme |
+| ROI | EMI, loan balance, rental yield, payback, IRR (with and without loan), NPV, yearly cash flow. | Only the numbers you type |
+| Compare designs | Side by side: current design, saved versions, other local projects; areas, rooms, windows, circulation/wet/habitable shares, review and Vastu counts, cost if you entered rates; space-use hints. | Same project data |
+
+Settings typed on these pages (latitude, wind, rules, ROI inputs, timeline) are kept in this browser per project, not in the project file. No database changes.
+
+**Not included in this release** (they could not be tested here, or need new server tables): AR preview, realistic interior rendering, client collaboration/sharing, and full CAD editing tools. Structural layout, landscape, setback display, BOQ and the AI assistant already existed and were not duplicated.
+
+Verification: 221 automated tests pass (22 new for this part, including solar geometry against known values, loan/IRR maths, and checks that every generated drawing is valid). All eight screens were opened in a real browser at desktop and 360 px width without overflow or errors. Not verified: the real `next build` on your machine and a phone/print check of the downloaded SVG/PNG files.
