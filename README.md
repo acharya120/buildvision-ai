@@ -266,3 +266,20 @@ A third group inside the Studio tab. Nothing existing was changed; no database c
 **All results are preliminary rule-based estimates, not certified.** They are not structural, fire-safety or regulatory approvals. Fire, accessibility and carbon limits and factors are YOURS to enter or confirm for your country. A licensed architect/engineer and the local authority must verify before construction.
 
 Limits: fire load, fire-rated elements, sprinklers, smoke control and equipment/people heat gains are not modelled. The clash structural grid is the app's indicative layout.
+
+## Studio > Site & money
+
+A fourth group inside the Studio tab. Everything is stored in your browser (per project); there is no database change and nothing is sent or paid from here.
+
+| Page | What it does |
+|---|---|
+| Procurement | Suppliers; purchase list filled from your material take-off; quotes per supplier; cheapest-quote pick; order, delivery and late tracking; committed vs delivered value; purchase-order draft CSV per supplier |
+| Site inspections | Stage checklists (generic prompts), pass/fail/pending, snag list with fix-by dates and closing, pass rate, CSV log |
+| Finance & payments | Budget, contracts, variations, cumulative progress claims, certificates (earned value − retention − pro-rata advance recovery), payments recorded, overpayment and over-budget warnings, forecast final cost including procurement |
+| Facility register | Assets linked to rooms (suggested from your plan), warranty end, next-service dates, maintenance log, plan view with status-coloured pins, CSV |
+
+Limits, stated plainly:
+- Rates, quotes, retention and all money values are entered by you. Taxes, penalties and contract terms are not applied.
+- Inspection checklists are generic; your drawings, specification and local code decide acceptance.
+- The facility register is not a live digital twin: real sensors or a building management system need outside hardware and a paid/custom service.
+- Photos and shared access (architect / engineer / contractor / client) need file storage and database tables, planned for Phase 4. Data is per browser until then; use "Download backup" and the CSV exports to keep copies.
