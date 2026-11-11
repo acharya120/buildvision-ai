@@ -247,3 +247,22 @@ Settings typed on these pages (latitude, wind, rules, ROI inputs, timeline) are 
 **Not included in this release** (they could not be tested here, or need new server tables): AR preview, realistic interior rendering, client collaboration/sharing, and full CAD editing tools. Structural layout, landscape, setback display, BOQ and the AI assistant already existed and were not duplicated.
 
 Verification: 221 automated tests pass (22 new for this part, including solar geometry against known values, loan/IRR maths, and checks that every generated drawing is valid). All eight screens were opened in a real browser at desktop and 360 px width without overflow or errors. Not verified: the real `next build` on your machine and a phone/print check of the downloaded SVG/PNG files.
+
+## Studio > Engineering (preliminary)
+
+A third group inside the Studio tab. Nothing existing was changed; no database change; all settings live in your browser.
+
+| Page | What it really calculates |
+|---|---|
+| Carbon | Material quantities from the estimate × editable factors; what-if cuts; operational carbon from your own kWh and grid factor |
+| Energy & solar | Envelope heat gain by facade, hourly solar through glass, improved-envelope comparison, roof PV potential |
+| Accessibility | Door/corridor/stair/lift/ramp checks against values you can edit |
+| Fire safety | Shortest walking route from every room to an exit (doors and room centres), exits per floor, extinguisher and detector counts, evacuation drawing |
+| Clashes | Geometric checks: overlapping openings, columns/beams vs openings, unsupported walls, overhangs, drains through living rooms |
+| Renovation | Baseline vs current plan: demolition/new wall lengths and volumes, cost from rates you enter |
+| Revisions | Revision register (A, B, C…) with snapshot per issue and change list |
+| Reports | Combined HTML/CSV report and charts |
+
+**All results are preliminary rule-based estimates, not certified.** They are not structural, fire-safety or regulatory approvals. Fire, accessibility and carbon limits and factors are YOURS to enter or confirm for your country. A licensed architect/engineer and the local authority must verify before construction.
+
+Limits: fire load, fire-rated elements, sprinklers, smoke control and equipment/people heat gains are not modelled. The clash structural grid is the app's indicative layout.
