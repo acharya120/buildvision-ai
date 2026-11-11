@@ -34,3 +34,15 @@ export function useStored<T>(projectId: string, name: string, initial: T): [T, (
   );
   return [val, set];
 }
+
+/** Non-hook read of a setting saved by useStored (for reports). */
+export function readStored<T>(projectId: string, name: string, initial: T): T {
+  try {
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(`bv_an_${projectId}_${name}`) : null;
+    if (!raw) return initial;
+    const v = JSON.parse(raw);
+    return typeof initial === "object" && initial !== null && !Array.isArray(initial) ? { ...initial, ...v } : v;
+  } catch {
+    return initial;
+  }
+}
