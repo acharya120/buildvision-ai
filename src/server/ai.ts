@@ -144,7 +144,7 @@ export async function aiPublicStatus(ctx: Ctx) {
 
 const today = (now: number) => new Date(now).toISOString().slice(0, 10);
 
-async function takeQuota(ctx: Ctx, user: UserRow, limit: number): Promise<boolean> {
+export async function takeQuota(ctx: Ctx, user: UserRow, limit: number): Promise<boolean> {
   const day = today(ctx.now());
   const raw = await ctx.repo.getKv(user.id, "ai-usage");
   const [d, n] = (raw ?? "").split(":");

@@ -13,7 +13,7 @@ import { downloadText, safeFileName } from "@/lib/export/download";
 import { saveProject } from "@/lib/storage/local";
 import { useWorkspace } from "@/lib/state/store";
 import { btn, TextField } from "../ui/Field";
-import { IconPlan, IconMagic, IconCube, IconCalc, IconDownload, IconChat, Logo } from "../ui/Icons";
+import { IconPlan, IconMagic, IconCube, IconCalc, IconDownload, IconChat, IconLayers, Logo } from "../ui/Icons";
 import PlanEditor from "./PlanEditor";
 import LeftPanel from "./LeftPanel";
 import RightPanel from "./RightPanel";
@@ -22,15 +22,17 @@ import EstimatePanel from "./EstimatePanel";
 import DrawingsPanel from "./DrawingsPanel";
 import AssistantPanel from "./AssistantPanel";
 import AutoDesignPanel from "./AutoDesignPanel";
+import StudioPanel from "../studio/StudioPanel";
 import AccountMenu from "../auth/AccountMenu";
 
-type Tab = "plan" | "auto" | "3d" | "estimate" | "drawings" | "assistant";
+type Tab = "plan" | "auto" | "3d" | "estimate" | "drawings" | "studio" | "assistant";
 const TABS: Array<[Tab, string, string, () => ReactElement]> = [
   ["plan", "Floor plan", "Plan", IconPlan],
   ["auto", "Auto design", "Auto", IconMagic],
   ["3d", "3D view", "3D", IconCube],
   ["estimate", "Estimate", "Cost", IconCalc],
   ["drawings", "Drawings & export", "Export", IconDownload],
+  ["studio", "Studio", "Studio", IconLayers],
   ["assistant", "Assistant", "Help", IconChat],
 ];
 type PlanPane = "canvas" | "rooms" | "props";
@@ -215,6 +217,7 @@ export default function Workspace() {
         {tab === "3d" && <div className="h-full min-h-[420px]"><Viewer3D /></div>}
         {tab === "estimate" && <EstimatePanel />}
         {tab === "drawings" && <DrawingsPanel />}
+        {tab === "studio" && <StudioPanel />}
         {tab === "assistant" && <AssistantPanel />}
       </main>
 
@@ -223,7 +226,7 @@ export default function Workspace() {
       </footer>
 
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-white/95 backdrop-blur md:hidden" aria-label="Workspace sections">
-        <ul className="grid grid-cols-6">
+        <ul className="grid grid-cols-7">
           {TABS.map(([id, , short, Icon]) => (
             <li key={id}>
               <button
