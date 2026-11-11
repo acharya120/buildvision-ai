@@ -249,6 +249,36 @@ export interface Project {
   northAngle?: number;
   /** optional limits from YOUR local rules; the app only compares against them and never changes the design */
   limits?: PlotLimits;
+  /** optional material-estimate assumptions (Studio tab); absent = built-in defaults */
+  materials?: MaterialsConfig;
+}
+
+/** Editable assumptions for the Studio material estimate. Rule-of-thumb values, NOT a structural or contractual specification. */
+export interface MaterialsConfig {
+  /** wastage on bricks/masonry, % */
+  masonryWastePct: number;
+  /** wastage on floor and wall tiles, % */
+  tileWastePct: number;
+  /** wet mortar as a share of masonry volume, % */
+  mortarSharePct: number;
+  /** plaster thickness, m */
+  plasterThickness: number;
+  /** concrete in columns, beams and footings per m2 of built-up area (all floors), m3/m2 */
+  frameConcretePerM2: number;
+  /** reinforcement steel per m3 of concrete, kg/m3 */
+  steelKgPerM3: number;
+  /** slab thickness used for slab concrete, m */
+  slabThickness: number;
+  /** paint coats and coverage */
+  paintCoats: number;
+  paintCoverage: number; // m2 per litre per coat
+  /** height of wall tiles in bathrooms/toilets and above kitchen counters, m */
+  wetTileHeight: number;
+  kitchenTileHeight: number;
+  /** percentages added on top of material cost */
+  labourPct: number;
+  contingencyPct: number;
+  taxPct: number;
 }
 export type BuildingModel = Project;
 

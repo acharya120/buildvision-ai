@@ -8,6 +8,7 @@ import type {
   Wall,
 } from "./types";
 import { isSimplePolygon, polygonBBox } from "../geometry/polygon";
+import { sanitizeMaterials } from "../materials/config";
 import { ROOM_TYPES, BUILDING_TYPE_LABELS, defaultSettings } from "./defaults";
 
 export const CURRENT_SCHEMA_VERSION = 1;
@@ -275,6 +276,8 @@ export function parseProject(raw: unknown): ParseResult {
     }
   }
 
+  const materials = isRec(root.materials) ? sanitizeMaterials(root.materials) : undefined;
+
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
@@ -295,6 +298,7 @@ export function parseProject(raw: unknown): ParseResult {
       ...(detail ? { detail } : {}),
       ...(limits && (limits.far != null || limits.coveragePct != null || limits.maxHeight != null) ? { limits } : {}),
       ...(northAngle !== undefined ? { northAngle } : {}),
+      ...(materials ? { materials } : {}),
     },
   };
 }
