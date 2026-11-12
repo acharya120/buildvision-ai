@@ -70,3 +70,9 @@ and open http://localhost:3000. Run `npm test` for the unit tests and `npm run t
 ## Optional: turn on login, email codes and the Neon database
 
 The site works without this. To add registration, email verification, an admin Settings panel and cloud-saved projects, follow [ACCOUNTS_SETUP.md](./ACCOUNTS_SETUP.md).
+
+## Optional: team features and file storage (Phase 4)
+
+1. Team sharing, the central database and server backups use the same Neon database as accounts. No new setting is needed; the new tables are created the first time the features are used.
+2. For the Files page, create a Vercel Blob store (Vercel > your project > Storage > Create > Blob) and connect it. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically. Redeploy afterwards.
+3. Without these, the app works as before. File backups (Studio > Team & backup > Backup & recovery) work with no setup at all.

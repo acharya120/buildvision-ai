@@ -283,3 +283,49 @@ Limits, stated plainly:
 - Inspection checklists are generic; your drawings, specification and local code decide acceptance.
 - The facility register is not a live digital twin: real sensors or a building management system need outside hardware and a paid/custom service.
 - Photos and shared access (architect / engineer / contractor / client) need file storage and database tables, planned for Phase 4. Data is per browser until then; use "Download backup" and the CSV exports to keep copies.
+
+## Studio > BIM & survey
+
+A fifth group inside the Studio tab. Everything runs in your browser; files are never uploaded. No database change.
+
+| Page | What it does |
+|---|---|
+| IFC / BIM | Exports IFC4 (storeys, walls, doors, windows with openings, floor slabs, room spaces, optional indicative columns/beams) with an in-app structural self-check. Limited import: rooms and walls drawn as simple extruded rectangles become a NEW project |
+| Topography | Spot levels (typed or CSV) to contour map, slope bands, and cut/fill against a formation level for the building pad and the whole plot |
+| Scan to plan | ASCII XYZ / CSV / ASCII PLY point cloud to rectangular rooms (auto-rotates the plan, closes door gaps); creates a NEW project |
+| Structural hand-off | Indicative frame to STAAD input text and CSV; single-beam hand-check (simple, fixed, propped, cantilever) with deflection limit |
+
+Limits, stated plainly:
+- **IFC:** an independent IFC validator could not be installed where this was built. The export passes this app's own structural check (header, ids, references, attribute counts) and re-imports correctly, but it has not been opened in a third-party IFC viewer. Check it in BIMvision, FreeCAD or BlenderBIM before sharing. Import reads only simple extruded-rectangle geometry; Revit/ArchiCAD files will often import partially. Doors and windows are not imported.
+- **Topography:** interpolated from your spot levels, not a survey. Automatic ground levels from a map service need an outside API and are not included. Volumes ignore topsoil, swell and excavation slopes.
+- **Scan to plan:** tested on synthetic scans only (rotated, Y-up, with door gaps), not on real scanner data. Binary PLY is not supported. Phone/LiDAR capture itself is outside this app. Curved or angled walls and heavy clutter reduce accuracy.
+- **Structural:** the frame is the app's indicative layout, not an engineered one. The STAAD text follows the standard command layout but was not opened in STAAD. ETABS/SAP2000: CSV with manual mapping only. The beam check is an elastic textbook hand-check, not a reinforced-concrete design. A licensed structural engineer must design the structure.
+
+## Studio > Team & backup (Phase 4)
+
+A sixth group inside the Studio tab. Everything here is ADDITIVE: existing tables, routes and screens are unchanged, and the app still runs without `DATABASE_URL`.
+
+| Page | What it does | Needs |
+|---|---|---|
+| Sharing & roles | Owner adds people by e-mail as architect, engineer, contractor or client; members get copies, the owner or an architect publishes changes | Database + login |
+| Central database | Send / get the site records (procurement, inspections, finance, facility register, revisions) to a shared copy, with a refusal if someone else saved first | Database + login |
+| Backup & recovery | Download a backup file (project + settings + History); restore as a NEW project; up to 20 server backups | File backup: nothing. Server backups: database + login |
+| Files | Photos, PDFs, scans, IFC up to 4 MB, checked by type and permission, never exposed by address | Vercel Blob |
+| Activity | Who changed what through the sharing features (owner only) | Database + login |
+
+**Roles** (enforced on the server; the screen only hides buttons): owner edits everything; architect edits design, revisions, inspections, facility register, files and reads procurement and finance; engineer reads the design and records inspections and files; contractor records procurement, inspections and files and reads the design; client reads design, inspections, finance and facility register. Managing members, server backups and the activity log are owner-only.
+
+**New database tables** (created automatically, `CREATE TABLE IF NOT EXISTS`, nothing existing altered): `bvx_members`, `bvx_data`, `bvx_backups`, `bvx_files`, `bvx_audit`. The existing tables are only read, except that an architect/owner "Publish" writes the shared project into the owner's existing `bv_projects` row through the same validation as an import.
+
+**New API**: one catch-all route, `/api/pm/...`, all behind login and the same-origin check.
+
+**To turn on Files (Vercel Blob)**: in Vercel open your project, choose Storage, create a Blob store and connect it to the project. Vercel adds `BLOB_READ_WRITE_TOKEN`; redeploy. The `@vercel/blob` package is listed in `package.json`, so Vercel installs it on the next build.
+
+Limits, stated plainly:
+- **Not tested against live services.** The new tables, the Neon queries and Vercel Blob could not be run in the build environment. The logic is tested with an in-memory database and a fake blob store; the first real use on your site is the real test. Please try: add a member, save a section, make a server backup, upload one photo.
+- No live co-editing. Members work on copies; changes are shared by Publish and by the central database buttons. Two people editing the same section at once get a "newer version" message instead of a silent overwrite.
+- A shared project's design is copied by "Get a copy" and published back by an architect or the owner; other members' copies do not update by themselves.
+- Uploads are limited to 4 MB per file by the hosting platform. Blob links are unguessable but public at the storage level; the app never shows them and serves files only through a permission check.
+- Members are matched by the verified e-mail of their account. Anyone who controls that e-mail address gets that access.
+- No automatic scheduled backups: server backups happen when you press the button.
+- Contractors cannot see finance (they cannot enter their own claims); claims are entered by the owner.
