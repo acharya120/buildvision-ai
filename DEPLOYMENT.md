@@ -12,7 +12,7 @@ You do not need VS Code or a terminal. You will need free accounts on **GitHub**
 4. On the new empty repository page, click the link **uploading an existing file**.
 5. Open the unzipped `buildvision-ai` folder and select **everything inside it** (not the folder itself), then drag it into the GitHub page.
    - Hidden files matter: `.gitignore`, `.eslintrc.json` and `.env.example` start with a dot. If you cannot see them, show hidden files (Mac: press **Cmd + Shift + .** in Finder; Windows: File Explorer → View → Show → Hidden items). Dragging the files in from the folder includes them.
-   - GitHub's web uploader accepts about **100 files per upload**. This project has fewer than that. If GitHub ever shows a limit message, upload the `src` folder first, commit, then upload the rest.
+   - GitHub's web uploader accepts about **100 files per upload**. This project now has about 232 files, so upload in batches: (1) top-level files + `e2e` + `tests`, (2) `src/app`, (3) `src/components`, (4) `src/server`, (5) `src/lib`. Commit after each batch and keep folder names exactly (including `src/app/api/pm/[...path]`).
    - Keep the folder structure: `src`, `tests`, `e2e` must appear as folders.
 6. Wait until all files finish uploading. In "Commit changes" leave the default message, choose **Commit directly to the main branch**, and click **Commit changes**.
 7. Check that the repository's front page shows `package.json`, `next.config.mjs`, `README.md` and the `src` folder **at the top level** (not inside another folder). If everything is inside a sub-folder, you uploaded the wrong level: delete the repo contents or create a new repository and upload the inner files again.
