@@ -329,3 +329,22 @@ Limits, stated plainly:
 - Members are matched by the verified e-mail of their account. Anyone who controls that e-mail address gets that access.
 - No automatic scheduled backups: server backups happen when you press the button.
 - Contractors cannot see finance (they cannot enter their own claims); claims are entered by the owner.
+
+
+## Advanced rules (optional; Phase 1 of the generative upgrade)
+
+An **Advanced rules** card under Auto design (house mode, switched OFF by default). The classic generator, its options and every existing screen are unchanged; this is a second, separate generator in `src/lib/layout/engine/` (pure geometry, no UI code) that produces the same kind of options.
+
+| Rule | What it does |
+| --- | --- |
+| Structural grid | You pick a span (3.0 x 3.0, 3.6 x 3.6, 4.5 x 6.0 m or custom). The footprint is a whole number of bays and room walls fall on column lines. Only the partitions inside a wet bay are off-grid. |
+| Zoning envelope | Plot minus your front, rear and side setbacks, then capped by your maximum ground coverage % and FAR/FSI (FAR depends on the number of floors). Nothing is placed outside it. If the limits leave no room you get a plain explanation, not a broken layout. |
+| Wet walls | Stair in bay 0 at the front and a wet core (bathrooms, toilet) in bay 0 at the rear on every floor, so stairs and plumbing stack. The kitchen sits next to the wet core. Notes report shared wet-wall length and the % of upper-floor wet area stacked above wet rooms. |
+| Circulation and shape | Corridor width you choose (1.0 to 2.4 m; 1.0 to 1.2 m is usual), no dead space or overlaps, minimum short side and maximum long:short ratio per room type, door swings that fit and do not hit each other, every room reachable by a door. Candidates that break a rule are discarded. |
+
+Limits, stated plainly:
+- Rooms are rectangles on a rectangular footprint. Plots with a shape use the largest rectangle inside them.
+- Balconies are not placed by this engine yet. On very wide grids some rooms come out larger than usual and filler rooms (lounge, guest room) are added; the notes say so.
+- The three options currently differ by core side, corridor and room order. Phase 2 adds options ranked by space efficiency, daylight and structural economy, a room-adjacency matrix, lock and regenerate, and a directional (Vastu) toggle.
+- Setbacks, coverage and FAR are only the numbers you enter. Results are preliminary concepts, not a code approval or a structural design.
+- Tested with 27 new unit tests (envelope, grid, wet walls, circulation, and 7 generated scenarios that are applied to a project and checked by the same validator as hand-drawn designs) and in a headless browser at 1280 and 360 px. Not run: the real `next build`.
