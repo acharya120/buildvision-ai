@@ -22,6 +22,8 @@ import { openingGeometry, wallPolygon } from "@/lib/geometry/walls";
 import { useWorkspace, type Tool } from "@/lib/state/store";
 import { loadLibrary } from "@/lib/storage/roomLibrary";
 import { btn } from "../ui/Field";
+import { useLabelLang } from "@/lib/i18n/useLabelLang";
+import { LABEL_FONT_STACK, localRoomName } from "@/lib/i18n/labels";
 
 interface View {
   tx: number;
@@ -53,6 +55,7 @@ const corners = (r: { x: number; y: number; width: number; depth: number }) => [
 
 export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
   const ws = useWorkspace();
+  const [lang] = useLabelLang();
   const { project, activeFloorId, selection, tool, roomType } = ws.state;
   const floor = getFloor(project, activeFloorId) ?? project.floors[0];
   const floorIndex = project.floors.findIndex((f) => f.id === floor.id);
@@ -393,8 +396,8 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
                     </g>
                   )}
                   {ok && r.width * s > 54 && r.depth * s > 34 && (
-                    <g pointerEvents="none" fontSize={px(12)} textAnchor="middle" fill="#1f2430">
-                      <text x={r.x + r.width / 2} y={r.y + r.depth / 2 - px(6)} fontWeight="bold">{r.name}</text>
+                    <g pointerEvents="none" fontSize={px(12)} textAnchor="middle" fill="#1f2430" fontFamily={lang === "en" ? undefined : LABEL_FONT_STACK}>
+                      <text x={r.x + r.width / 2} y={r.y + r.depth / 2 - px(6)} fontWeight="bold">{localRoomName(r, lang)}</text>
                       <text x={r.x + r.width / 2} y={r.y + r.depth / 2 + px(8)} fontSize={px(10.5)} fill="#3b4252">
                         {formatLength(r.width, sys)} × {formatLength(r.depth, sys)}
                       </text>

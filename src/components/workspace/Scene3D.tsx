@@ -12,6 +12,8 @@ import { floorElevations } from "@/lib/export/drawings";
 import { buildSite } from "@/lib/site/site";
 import { stairBlocks } from "@/lib/geometry/stairs";
 import { furnitureFor } from "@/lib/geometry/furniture";
+import { useLabelLang } from "@/lib/i18n/useLabelLang";
+import { LABEL_FONT_STACK, localRoomName } from "@/lib/i18n/labels";
 import type { Theme3D } from "@/lib/geometry/theme3d";
 import { buildStructure } from "@/lib/structure/structure";
 import { footprintFill, hipRoofPositions, pillarPositions, roadAlong, segPieces, segPillars, segShrubs, shrubPositions } from "@/lib/geometry/landscape";
@@ -49,6 +51,7 @@ interface Props {
 }
 
 export default function Scene3D({ project, options, onSelectRoom }: Props) {
+  const [lang] = useLabelLang();
   const { plot } = project;
   const elev = useMemo(() => floorElevations(project), [project]);
   const totalH = project.floors.reduce((s, f) => s + f.height, 0) + options.explode * (project.floors.length - 1);
@@ -306,7 +309,7 @@ export default function Scene3D({ project, options, onSelectRoom }: Props) {
                   )}
                   {options.showLabels && (
                     <Html position={[r.x + r.width / 2, 0.3, r.y + r.depth / 2]} center distanceFactor={size * 0.9} style={{ pointerEvents: "none" }}>
-                      <div style={{ fontSize: 12, fontFamily: "Arial, sans-serif", background: "rgba(255,255,255,0.8)", padding: "1px 5px", borderRadius: 3, whiteSpace: "nowrap" }}>{r.name}</div>
+                      <div style={{ fontSize: 12, fontFamily: lang === "en" ? "Arial, sans-serif" : LABEL_FONT_STACK, background: "rgba(255,255,255,0.8)", padding: "1px 5px", borderRadius: 3, whiteSpace: "nowrap" }}>{localRoomName(r, lang)}</div>
                     </Html>
                   )}
                 </group>

@@ -15,6 +15,7 @@ import { formatArea, formatLength } from "@/lib/model/units";
 import { ROOM_TYPE_LABELS } from "@/lib/model/defaults";
 import { useWorkspace } from "@/lib/state/store";
 import LayerExportCard from "./LayerExportCard";
+import DetailedSheetCard from "./DetailedSheetCard";
 import { btn, btnPrimary, Disclaimer, inputCls, Label } from "../ui/Field";
 
 type View = "plan" | "elevation" | "section" | "schedule" | "columns" | "beams" | "footings" | "ssection" | "iso" | "site";
@@ -165,6 +166,7 @@ export default function DrawingsPanel() {
         </div>
       )}
 
+      <DetailedSheetCard />
       <LayerExportCard />
       <section className="rounded-lg border border-ink-200 bg-white p-4" aria-labelledby="exp-h">
         <h2 id="exp-h" className="mb-1 font-semibold">Export the whole project</h2>

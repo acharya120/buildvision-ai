@@ -7,6 +7,7 @@ import { DEFAULT_THEME } from "@/lib/geometry/theme3d";
 import type { ValidationIssue } from "@/lib/model/types";
 import PlanEditor from "./PlanEditor";
 import LiveSummaryBar from "./LiveSummaryBar";
+import LanguageSelect from "./LanguageSelect";
 import { btn } from "../ui/Field";
 
 const Scene3D = dynamic(() => import("./Scene3D"), {
@@ -30,8 +31,9 @@ export default function PlanCanvasArea({ issues }: { issues: ValidationIssue[] }
 
   return (
     <div className="flex h-full min-h-[420px] flex-col">
-      <div className="hidden items-center gap-2 border-b border-ink-200 bg-white px-2 py-1 md:flex">
-        <button className={`${btn} ${split ? "ring-2 ring-brand-500" : ""}`} aria-pressed={split} onClick={toggle} title="Show a live 3D preview next to the plan">
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-200 bg-white px-2 py-1">
+        <LanguageSelect id="canvas-lang" />
+        <button className={`${btn} hidden md:inline-block ${split ? "ring-2 ring-brand-500" : ""}`} aria-pressed={split} onClick={toggle} title="Show a live 3D preview next to the plan">
           {split ? "Hide 3D preview" : "Split with 3D"}
         </button>
         {split && <span className="hidden text-xs text-ink-500 sm:inline">The 3D preview follows every edit. Use the 3D tab for all view controls.</span>}

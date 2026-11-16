@@ -10,6 +10,7 @@ import { polygonPath } from "../geometry/polygon";
 import { plotArea } from "../model/plotShapes";
 import { openingGeometry, wallPolygon } from "../geometry/walls";
 import { DISCLAIMER_SHORT } from "./disclaimer";
+import { LABEL_FONT_STACK, floorLabel, localRoomName, termsFor, type LabelLang } from "../i18n/labels";
 
 export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -45,6 +46,12 @@ export interface SvgOptions {
   layers?: Partial<ExportLayers>;
   /** wrap each kind of content in its own named group (id and data-layer), so CAD and vector editors can show or hide it */
   layered?: boolean;
+  /** language of the names on the drawing (rooms, entrance and exit, floor name). Default English. Numbers are never changed. */
+  lang?: LabelLang;
+  /** extra detail: bigger names, width and depth arrows inside every room, area, stair treads and an UP / DOWN note */
+  detailed?: boolean;
+  /** "bright": yellow walls, light floors, blue names (easy to read on a phone). Default is the classic look. */
+  style?: "classic" | "bright";
 }
 
 function dimension(x1: number, y1: number, x2: number, y2: number, offset: number, label: string): string {
@@ -114,9 +121,19 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
   const Y = (m: number) => f2(oy + (m - vy) * s);
   const sys = p.unitSystem;
 
+  const lang: LabelLang = opts.lang ?? "en";
+  const detailed = !!opts.detailed;
+  const bright = opts.style === "bright";
+  const fIdx = Math.max(0, p.floors.indexOf(floor));
+  const floorName = floorLabel(floor.name, fIdx, lang);
+  const WALLC = bright ? "#f2c200" : "#2b2f3a";
+  const DOORC = bright ? "#8b4a1f" : "#2b2f3a";
+  const NAMEC = bright ? "#1a3fd0" : "#1f2430";
+  const terms = termsFor(lang);
+
   const out: string[] = [];
-  out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${f2(W)}" height="${f2(H)}" viewBox="0 0 ${f2(W)} ${f2(H)}" font-family="Arial, Helvetica, sans-serif">`);
-  out.push(`<title>${esc(p.name)} - ${esc(floor.name)}</title>`);
+  out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${f2(W)}" height="${f2(H)}" viewBox="0 0 ${f2(W)} ${f2(H)}" font-family="${lang === "en" ? "Arial, Helvetica, sans-serif" : LABEL_FONT_STACK}">`);
+  out.push(`<title>${esc(p.name)} - ${esc(floorName)}</title>`);
   out.push(`<rect width="100%" height="100%" fill="#ffffff"/>`);
 
   gOpen("GRID");
@@ -142,7 +159,11 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
 
   if (opts.showSite !== false && floor === p.floors[0]) {
     const site = buildSite(p);
-    if (site) out.push(siteSvg(site, X, Y, s, 1));
+    if (site) {
+      let t = siteSvg(site, X, Y, s, 1);
+      if (terms) t = t.replace(">VEHICLE ENTRY<", `>${esc(terms.vehicle)}<`).replace(">ENTRANCE<", `>${esc(terms.entrance)}<`).replace(">EXIT<", `>${esc(terms.exit)}<`);
+      out.push(t);
+    }
   }
   out.push("</g>");
   gClose();
@@ -154,7 +175,7 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
 
   gOpen("ROOMS");
   for (const r of floor.rooms.filter(isValidRect)) {
-    out.push(`<rect x="${X(r.x)}" y="${Y(r.y)}" width="${f2(r.width * s)}" height="${f2(r.depth * s)}" fill="${ROOM_COLORS[r.type]}" stroke="#6b7280" stroke-width="0.6"/>`);
+    out.push(`<rect x="${X(r.x)}" y="${Y(r.y)}" width="${f2(r.width * s)}" height="${f2(r.depth * s)}" fill="${bright ? "#f6f6f2" : ROOM_COLORS[r.type]}" stroke="#6b7280" stroke-width="0.6"/>`);
   }
   gClose();
   gOpen("WALLS");
@@ -162,7 +183,7 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     const pts = wallPolygon(w)
       .map((pt) => `${X(pt.x)},${Y(pt.y)}`)
       .join(" ");
-    out.push(`<polygon points="${pts}" fill="#2b2f3a"/>`);
+    out.push(`<polygon points="${pts}" fill="${WALLC}"${bright ? ' stroke="#a88700" stroke-width="0.8"' : ""}/>`);
   }
   gClose();
   gOpen("OPENINGS");
@@ -176,8 +197,8 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
       const leafX = g.p0.x + g.normal.x * o.width;
       const leafY = g.p0.y + g.normal.y * o.width;
       const r = o.width * s;
-      out.push(`<line x1="${X(g.p0.x)}" y1="${Y(g.p0.y)}" x2="${X(leafX)}" y2="${Y(leafY)}" stroke="#2b2f3a" stroke-width="1.2"/>`);
-      out.push(`<path d="M ${X(leafX)} ${Y(leafY)} A ${f2(r)} ${f2(r)} 0 0 1 ${X(g.p1.x)} ${Y(g.p1.y)}" fill="none" stroke="#2b2f3a" stroke-width="0.6"/>`);
+      out.push(`<line x1="${X(g.p0.x)}" y1="${Y(g.p0.y)}" x2="${X(leafX)}" y2="${Y(leafY)}" stroke="${DOORC}" stroke-width="${bright ? 2 : 1.2}"/>`);
+      out.push(`<path d="M ${X(leafX)} ${Y(leafY)} A ${f2(r)} ${f2(r)} 0 0 1 ${X(g.p1.x)} ${Y(g.p1.y)}" fill="none" stroke="${DOORC}" stroke-width="0.6"/>`);
     } else {
       for (const k of [-0.5, 0, 0.5]) {
         const dx = g.normal.x * (t / 2) * k;
@@ -204,12 +225,62 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
   for (const r of floor.rooms.filter(isValidRect)) {
     const cx = X(r.x + r.width / 2);
     const cy = Y(r.y + r.depth / 2);
-    const fs = Math.max(8, Math.min(13, (r.width * s) / 9));
-    out.push(
-      `<text x="${cx}" y="${f2(cy - fs * 0.6)}" font-size="${f2(fs)}" font-weight="bold" text-anchor="middle" fill="#1f2430">${esc(r.name)}</text>` +
-        `<text x="${cx}" y="${f2(cy + fs * 0.6)}" font-size="${f2(fs * 0.85)}" text-anchor="middle" fill="#3b4252">${esc(formatLength(r.width, sys))} x ${esc(formatLength(r.depth, sys))}</text>` +
-        `<text x="${cx}" y="${f2(cy + fs * 1.8)}" font-size="${f2(fs * 0.85)}" text-anchor="middle" fill="#3b4252">${esc(formatArea(r.width * r.depth, sys))}</text>`,
-    );
+    const label = localRoomName(r, lang);
+    if (!detailed) {
+      const fs = Math.max(8, Math.min(13, (r.width * s) / 9));
+      out.push(
+        `<text x="${cx}" y="${f2(cy - fs * 0.6)}" font-size="${f2(fs)}" font-weight="bold" text-anchor="middle" fill="${NAMEC}">${esc(label)}</text>` +
+          `<text x="${cx}" y="${f2(cy + fs * 0.6)}" font-size="${f2(fs * 0.85)}" text-anchor="middle" fill="#3b4252">${esc(formatLength(r.width, sys))} x ${esc(formatLength(r.depth, sys))}</text>` +
+          `<text x="${cx}" y="${f2(cy + fs * 1.8)}" font-size="${f2(fs * 0.85)}" text-anchor="middle" fill="#3b4252">${esc(formatArea(r.width * r.depth, sys))}</text>`,
+      );
+      continue;
+    }
+    // detailed: big name, area, width and depth arrows inside the room, stair treads and UP / DOWN
+    const wpx = r.width * s, hpx = r.depth * s;
+    const len = Math.max(4, [...label].length);
+    const fs = f2(Math.max(9, Math.min(bright ? 17 : 15, (wpx * 0.84) / (len * 0.64))));
+    const sub = f2(Math.max(8, fs * 0.7));
+    const halo = `stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round"`;
+    if (r.type === "staircase") {
+      const tread = 0.28;
+      const alongY = r.depth >= r.width;
+      const n = Math.min(40, Math.floor((alongY ? r.depth : r.width) / tread));
+      for (let k = 1; k < n; k++) {
+        out.push(alongY
+          ? `<line x1="${X(r.x)}" y1="${Y(r.y + k * tread)}" x2="${X(r.x + r.width)}" y2="${Y(r.y + k * tread)}" stroke="#9aa3b2" stroke-width="0.8"/>`
+          : `<line x1="${X(r.x + k * tread)}" y1="${Y(r.y)}" x2="${X(r.x + k * tread)}" y2="${Y(r.y + r.depth)}" stroke="#9aa3b2" stroke-width="0.8"/>`);
+      }
+    }
+    if (hpx <= 60 && r.type !== "staircase") {
+      // a shallow room (corridor, lobby, small store): name and size on two lines, kept inside the room
+      out.push(`<text x="${cx}" y="${f2(cy - 1)}" font-size="${fs}" font-weight="bold" text-anchor="middle" fill="${NAMEC}" ${halo}>${esc(label)}</text>`);
+      out.push(`<text x="${cx}" y="${f2(cy + fs * 0.95)}" font-size="${sub}" text-anchor="middle" fill="#3b4252" ${halo}>${esc(formatLength(r.width, sys))} x ${esc(formatLength(r.depth, sys))}</text>`);
+      continue;
+    }
+    const nameY = r.type === "staircase" ? cy - fs * 0.9 : cy - fs * 0.15;
+    out.push(`<text x="${cx}" y="${f2(nameY)}" font-size="${fs}" font-weight="bold" text-anchor="middle" fill="${NAMEC}" ${halo}>${esc(label)}</text>`);
+    out.push(`<text x="${cx}" y="${f2(nameY + fs * 1.15)}" font-size="${sub}" text-anchor="middle" fill="#3b4252" ${halo}>${esc(formatArea(r.width * r.depth, sys))}</text>`);
+    if (r.type === "staircase") {
+      const last = p.floors.length - 1;
+      const up = terms ? terms.up : "UP", down = terms ? terms.down : "DOWN";
+      const t = fIdx < last && fIdx > 0 ? `${up} / ${down}` : fIdx < last ? up : down;
+      out.push(`<text x="${cx}" y="${f2(nameY + fs * 2.4)}" font-size="${sub}" font-weight="bold" text-anchor="middle" fill="#b45309" ${halo}>${esc(t)}</text>`);
+    }
+    if (wpx > 70 && hpx > 60) {
+      const col = "#2d3748";
+      const arrow = (x1: number, y1: number, x2: number, y2: number) => {
+        const L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L, h = 4.5, w = 2.2;
+        const head = (px: number, py: number, dx: number, dy: number) => `<polygon points="${f2(px)},${f2(py)} ${f2(px - dx * h + dy * w)},${f2(py - dy * h - dx * w)} ${f2(px - dx * h - dy * w)},${f2(py - dy * h + dx * w)}" fill="${col}"/>`;
+        return `<line x1="${f2(x1)}" y1="${f2(y1)}" x2="${f2(x2)}" y2="${f2(y2)}" stroke="${col}" stroke-width="0.9"/>` + head(x2, y2, ux, uy) + head(x1, y1, -ux, -uy);
+      };
+      const hy = Y(r.y) + 14, vx0 = X(r.x) + 14;
+      out.push(arrow(X(r.x) + 10, hy, X(r.x + r.width) - 10, hy));
+      out.push(`<text x="${cx}" y="${f2(hy - 3)}" font-size="${sub}" text-anchor="middle" fill="${col}" ${halo}>${esc(formatLength(r.width, sys))}</text>`);
+      out.push(arrow(vx0, Y(r.y) + 24, vx0, Y(r.y + r.depth) - 10));
+      out.push(`<text transform="translate(${f2(vx0 - 3)} ${cy}) rotate(-90)" font-size="${sub}" text-anchor="middle" fill="${col}" ${halo}>${esc(formatLength(r.depth, sys))}</text>`);
+    } else {
+      out.push(`<text x="${cx}" y="${f2(nameY + fs * 2.3)}" font-size="${f2(sub * 0.9)}" text-anchor="middle" fill="#3b4252" ${halo}>${esc(formatLength(r.width, sys))} x ${esc(formatLength(r.depth, sys))}</text>`);
+    }
   }
 
   gClose();
@@ -248,7 +319,7 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     out.push(`<rect x="10" y="${ty}" width="${f2(W - 20)}" height="${titleH - 24}" fill="none" stroke="#1f2430" stroke-width="1"/>`);
     const line = (i: number, text: string, bold = false) =>
       `<text x="22" y="${ty + 20 + i * 16}" font-size="${bold ? 14 : 11}" ${bold ? 'font-weight="bold"' : ""} fill="#1f2430">${esc(text)}</text>`;
-    out.push(line(0, `${p.name} - ${floor.name}`, true));
+    out.push(line(0, `${p.name} - ${floorName}`, true));
     out.push(`<text x="${f2(W - 22)}" y="${ty + 20}" font-size="12" font-weight="bold" text-anchor="end" fill="#178263">${esc(BRAND.product)}</text>`);
     out.push(`<text x="${f2(W - 22)}" y="${ty + 36}" font-size="10" text-anchor="end" fill="#434b5f">${esc(BRAND.credit)}</text>`);
     out.push(line(1, `Plot ${formatLength(p.plot.width, sys)} x ${formatLength(p.plot.depth, sys)} (${formatPlotArea(plotArea(p.plot))})${cropped ? " - drawing cropped around the building" : ""}`));

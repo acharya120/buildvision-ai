@@ -376,3 +376,11 @@ All inside the same optional **Advanced rules** area of Auto design; nothing exi
 
 ## Locked rooms (update)
 A room ticked **Locked** can no longer be dragged or resized on the plan (you get a short notice); untick it to move it again. Lock and regenerate behaves as before.
+
+## Phase 5: label languages and the detailed all-floors sheet (optional)
+
+- **Label language** (select in the plan toolbar, and in Drawings): English, Hindi, Marathi, Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam. It changes the room names on the 2D plan, in the 3D view and on the detailed sheet. Only the app's own default room and floor names are translated; names you typed yourself are never changed, and trailing numbers are kept ("Bedroom 2"). The choice is stored in this browser only, not in the project file, so nothing in saved projects or the database changes.
+- **Drawings > Detailed sheet: all floors, in your language**: every floor on one sheet with large names, the width and depth of each room drawn inside it, areas, stair treads with UP / DOWN and entrance / exit marks. Looks: Bright (yellow walls, blue names) or Classic. Download as SVG or PNG, or use **Print / save as PDF** (the browser's print draws Indian scripts correctly).
+- The existing PDF export is unchanged and stays English; the PDF library cannot draw Indian scripts. The disclaimer, scale text and plot captions stay English. Numbers stay in Western digits.
+- Indian-script text uses the fonts on your device (Nirmala UI on Windows, Kohinoor on Mac, Noto on Android). The translations are common everyday terms and should be checked by a native speaker before official use. The sheet is a preliminary concept drawing, not an approved or certified drawing.
+- New files: `src/lib/i18n/labels.ts`, `src/lib/i18n/useLabelLang.ts`, `src/lib/export/sheet.ts`, `src/components/workspace/LanguageSelect.tsx`, `DetailedSheetCard.tsx`, `tests/phase5.test.ts`. Edited (additively): `src/lib/export/svg.ts`, `PlanEditor.tsx`, `Scene3D.tsx`, `PlanCanvasArea.tsx`, `DrawingsPanel.tsx`.
