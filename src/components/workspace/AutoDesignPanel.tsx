@@ -13,6 +13,8 @@ import { btn, btnPrimary, inputCls, Label } from "../ui/Field";
 import AiDesignCard from "./AiDesignCard";
 import AdvancedRulesCard from "./AdvancedRulesCard";
 import LockRegenCard from "./LockRegenCard";
+import { DESIGN_PRESETS, type DesignPreset } from "@/lib/layout/presets";
+import { setPlot } from "@/lib/model/ops";
 
 function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -37,6 +39,15 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
   const set = <K extends keyof AutoDesignInput>(k: K, v: AutoDesignInput[K]) => setInput((i) => ({ ...i, [k]: v }));
   const num = (k: "floors" | "bedrooms" | "setbackFront" | "setbackRear" | "setbackSide", v: string) => set(k, v.trim() === "" ? NaN : Number(v));
 
+  const [presetId, setPresetId] = useState<string | null>(null);
+  const pickPreset = (pr: DesignPreset, withPlot: boolean) => {
+    setPresetId(pr.id);
+    setResult(null);
+    if (pr.kind === "house") { setMode("house"); setInput((i) => ({ ...i, ...pr.house })); }
+    else { setMode("corridor"); setCin((c) => ({ ...c, ...pr.corridor })); }
+    if (withPlot) { ws.commit(setPlot(ws.getState().project, pr.plot.width, pr.plot.depth)); ws.notify(`Plot set to ${pr.plot.width} x ${pr.plot.depth} m. Rooms never move when the plot changes. Press the generate button when ready.`); }
+  };
+  const hasRooms = project.floors.some((f) => f.rooms.length > 0);
   const previews = useMemo(() => {
     if (!result) return [];
     return result.options.map((o) => {
@@ -70,6 +81,17 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
           Generates up to three concept layouts for your plot from fixed layout rules: rooms in bands, a stacked stair and bathroom core, a hall where needed, doors so every room can be entered, and windows on outside walls.
           <strong> It is not AI and not an architect.</strong> It does not know orientation, ventilation or structural rules, local regulations, or your site. Enter your own setbacks. All results are starting points that you can edit.
         </p>
+        <div className="mt-3" role="group" aria-label="Presets">
+          <div className="text-xs font-semibold uppercase tracking-wide text-ink-500">Presets (optional starting points)</div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {DESIGN_PRESETS.map((pr) => <button key={pr.id} className={`${btn} ${presetId === pr.id ? "ring-2 ring-brand-500" : ""}`} aria-pressed={presetId === pr.id} onClick={() => pickPreset(pr, false)}>{pr.label}</button>)}
+          </div>
+          {presetId && (() => { const pr = DESIGN_PRESETS.find((x) => x.id === presetId)!; return (
+            <p className="mt-1 text-xs text-ink-600" data-testid="preset-note">
+              {pr.note} A plot of about {pr.plot.width} x {pr.plot.depth} m suits it. These only fill in the settings below; change anything you like.{" "}
+              {!hasRooms && <button className="underline" onClick={() => pickPreset(pr, true)}>Also set my plot to {pr.plot.width} x {pr.plot.depth} m</button>}
+            </p>); })()}
+        </div>
         <div className="mt-3 flex gap-2" role="group" aria-label="Building category">
           <button className={`${btn} ${mode === "house" ? "ring-2 ring-brand-500" : ""}`} onClick={() => setMode("house")}>House / flat</button>
           <button className={`${btn} ${mode === "corridor" ? "ring-2 ring-brand-500" : ""}`} onClick={() => setMode("corridor")}>Office, hotel, school, hospital, shop, warehouse…</button>

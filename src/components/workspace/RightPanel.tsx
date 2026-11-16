@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { DEFAULT_DETAIL, DEFAULT_LOADS, DEFAULT_SITE } from "@/lib/model/defaults";
+import { applyFix, fixAll, fixFor } from "@/lib/validation/autofix";
 import type { BuildingType, RoomType, UnitSystem, ValidationIssue } from "@/lib/model/types";
 import { BUILDING_TYPE_LABELS, ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/model/defaults";
 import {
@@ -127,11 +128,26 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
         <h2 id="issues-h" className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
           Checks ({shown.filter((i) => i.severity === "error").length} errors, {shown.filter((i) => i.severity === "warning").length} warnings)
         </h2>
+        {shown.some((i) => fixFor(project, i)) && (
+          <button
+            className="mb-2 w-full rounded-md border border-brand-600 bg-brand-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
+            onClick={() => {
+              const r = fixAll(cur());
+              if (r.applied.length === 0) { ws.notify("Nothing could be fixed automatically and safely."); return; }
+              ws.commit(r.project);
+              ws.notify(`Fixed ${r.applied.length} problem(s); ${r.remaining} check(s) still need your attention. Undo (Ctrl+Z) restores everything.`);
+            }}
+          >
+            Fix all safe issues
+          </button>
+        )}
         {shown.length === 0 ? (
           <p className="rounded-md border border-green-300 bg-green-50 p-2 text-xs text-green-800">No geometry problems found. This is a geometry check only, not a building-code check.</p>
         ) : (
           <ul className="space-y-1.5">
-            {shown.map((i) => (
+            {shown.map((i) => {
+              const fix = fixFor(project, i);
+              return (
               <li key={i.id}>
                 <button
                   className={`w-full rounded-md border p-2 text-left text-xs ${sevStyle[i.severity]}`}
@@ -148,8 +164,21 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
                 >
                   <span className="font-semibold uppercase">{i.severity}</span> · {i.message}
                 </button>
+                {fix && (
+                  <button
+                    className="mt-1 rounded border border-brand-600 bg-white px-2 py-1 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                    onClick={() => {
+                      const r = applyFix(cur(), i);
+                      if ("error" in r) ws.notify(r.error);
+                      else { ws.commit(r.project); ws.notify("Fixed. Undo (Ctrl+Z) restores the previous state."); }
+                    }}
+                  >
+                    Fix: {fix.label}
+                  </button>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
         {infos.length > 0 && (
