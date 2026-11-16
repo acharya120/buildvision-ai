@@ -12,6 +12,7 @@ import { useWorkspace } from "@/lib/state/store";
 import { btn, btnPrimary, inputCls, Label } from "../ui/Field";
 import AiDesignCard from "./AiDesignCard";
 import AdvancedRulesCard from "./AdvancedRulesCard";
+import LockRegenCard from "./LockRegenCard";
 
 function Check({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -146,6 +147,7 @@ export default function AutoDesignPanel({ onApplied }: { onApplied: () => void }
       </section>
 
       {mode === "house" && <AdvancedRulesCard base={{ ...input, northAngle: project.northAngle ?? 0 }} plot={project.plot} onResult={(r) => { setFloorIdx(0); setResult(r); }} />}
+      {mode === "house" && <LockRegenCard onApplied={onApplied} />}
 
       {result && result.errors.length > 0 && (
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
