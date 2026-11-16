@@ -20,9 +20,6 @@ import { checkZoning, computeEnvelope } from "./envelope";
 import { columnLines, gridAlignment, validateGrid } from "./grid";
 import { checkCirculation, SHAPE_RULES } from "./circulation";
 import { analyseWetWalls, isWet } from "./wetwall";
-import { DEFAULT_ADJACENCY, scoreAdjacency } from "./adjacency";
-import { directionalScore } from "./directional";
-import { daylightScore, economyScore, efficiencyScore, type Metrics } from "./objectives";
 import { CORRIDOR_LIMITS, DEFAULT_ZONING, GRID_PRESETS, type EngineInput, type Envelope, type RuleIssue } from "./types";
 
 export interface EngineResult {
@@ -193,7 +190,7 @@ function placeFloor(fc: FloorCells, g: Geo, bandBays: { front: number[]; rear: n
 
 const mirrorX = (rooms: Room[], W: number): Room[] => rooms.map((r) => ({ ...r, x: roundMm(W - r.x - r.width) }));
 
-interface Candidate { option: DesignOption; issues: RuleIssue[]; metrics: Metrics }
+interface Candidate { option: DesignOption; issues: RuleIssue[] }
 
 function evaluate(plot: Plot, input: EngineInput, env: Envelope, g: Geo, floorsLocal: Room[][], variantLabel: string): Candidate | string {
   const hasStair = input.floors > 1;
@@ -252,61 +249,13 @@ function evaluate(plot: Plot, input: EngineInput, env: Envelope, g: Geo, floorsL
   notes.push(`Ground coverage ${cov.toFixed(1)}%, FAR ${(builtUp / env.plotArea).toFixed(2)}, within the limits you entered.`);
   for (const i of circ.issues.filter((x) => x.severity !== "error")) notes.push(`Floor ${i.floor + 1}: ${i.message}`);
 
-  const nyLines = g.C > 0 ? 4 : 3;
-  const metrics: Metrics = { circRatio: circ.circulationRatio, alignRatio: align.ratio, wetGrouped: wet.groupedRatio, wetStacked: wet.stackedRatio, columns: (g.nx + 1) * nyLines, footprintArea: g.W * g.D };
   return {
     issues: circ.issues,
-    metrics,
     option: {
       id: "", label: "", summary: `${variantLabel}, ${g.W.toFixed(1)} x ${g.D.toFixed(1)} m on a ${g.sx.toFixed(1)} m grid`,
       score: Math.round(score * 10) / 10, floors, openings, footprint, builtUpArea: builtUp, notes,
     },
   };
-}
-
-interface Ranked { option: DesignOption; title: string }
-const TITLES = { efficiency: "Maximum space efficiency", daylight: "Optimal daylight and orientation", economy: "Structural economy" } as const;
-
-/**
- * Three named options from the candidate pool: best space efficiency, best daylight/orientation, best structural economy.
- * A candidate is used once; if one layout wins two objectives the next best takes the second. Room-relationship (adjacency)
- * and, when switched on, directional (Vastu) scores are added to every objective so they act as tie-breakers everywhere.
- */
-function rankThree(pool: Candidate[], input: EngineInput): Ranked[] {
-  const weights = { ...DEFAULT_ADJACENCY, ...(input.adjacency ?? {}) };
-  const minCols = Math.min(...pool.map((c) => c.metrics.columns)), maxCols = Math.max(...pool.map((c) => c.metrics.columns));
-  const minFp = Math.min(...pool.map((c) => c.metrics.footprintArea));
-  const rows = pool.map((c) => {
-    const rooms = c.option.floors.map((f) => f.rooms);
-    const adj = scoreAdjacency(rooms, weights);
-    const dir = input.directional ? directionalScore(rooms, c.option.openings, input.northAngle) : null;
-    const eff = efficiencyScore(c.metrics.circRatio);
-    const day = daylightScore(rooms, c.option.openings, input.northAngle);
-    const eco = economyScore(c.metrics, minCols, maxCols);
-    // compact footprints break ties: the same rooms on less land, walls and roof
-    const compact = -4 * (c.metrics.footprintArea / minFp - 1);
-    const extra = 0.3 * adj.score + (dir ? 0.5 * dir.score : 0) + compact;
-    return { c, adj, dir, eff, day, eco, extra };
-  });
-  const used = new Set<Candidate>();
-  const out: Ranked[] = [];
-  for (const obj of ["efficiency", "daylight", "economy"] as const) {
-    const field = obj === "efficiency" ? "eff" : obj === "daylight" ? "day" : "eco";
-    const order = [...rows].filter((r) => !used.has(r.c)).sort((a, b) => b[field] + b.extra - (a[field] + a.extra));
-    // prefer a layout that looks different from those already chosen
-    const pick = order.find((r) => !out.some((o) => o.option.summary === r.c.option.summary)) ?? order[0];
-    if (!pick) continue;
-    used.add(pick.c);
-    const o = pick.c.option;
-    o.score = pick[field];
-    const lines = [`Space efficiency ${pick.eff} · Daylight ${pick.day} · Structural economy ${pick.eco} · Room relationships ${pick.adj.score} (each 0 to 100, heuristics for ranking only).`];
-    const good = pick.adj.hits.filter((h) => h.weight > 0).length, bad = pick.adj.hits.filter((h) => h.weight < 0);
-    lines.push(`Room relationships: ${good} wanted pair(s) touch${bad.length ? `; ${bad.length} unwanted pair(s) touch (${bad.slice(0, 2).map((h) => `${h.a} / ${h.b}`).join(", ")}${bad.length > 2 ? ", ..." : ""})` : "; no unwanted pairs touch"}.`);
-    if (pick.dir) lines.push(`Directional (Vastu) score ${pick.dir.score}/100. Unmet: ${pick.dir.unmet.length ? pick.dir.unmet.slice(0, 4).join("; ") : "none"}. Vastu is a traditional guideline only.`);
-    o.notes = [...lines, ...o.notes];
-    out.push({ option: o, title: TITLES[obj] });
-  }
-  return out;
 }
 
 export function validateEngineInput(input: EngineInput): string[] {
@@ -391,10 +340,14 @@ export function generateEngineOptions(plot: Plot, input: EngineInput): EngineRes
     const why = [...reasons].slice(0, 3).join(" ");
     return { options: [], errors: [`No layout fits ${env.width.toFixed(1)} x ${env.depth.toFixed(1)} m of buildable area (footprint at most ${env.maxFootprint.toFixed(1)} m2) on a ${sx} x ${sy} m grid for ${input.bedrooms} bedroom(s) on ${input.floors} floor(s). ${why} Try a smaller grid, fewer bedrooms, more floors, or relaxed limits.`.trim()], adjustments, envelope: env };
   }
-  const ranked = rankThree(found, input);
-  const top = ranked.map((r) => r.option);
-  ranked.forEach((r, i) => { r.option.label = `Option ${String.fromCharCode(65 + i)}: ${r.title}`; });
-  top.forEach((o, i) => { o.id = `engine_${i + 1}`; });
+  // compactness: a bigger footprint than the smallest workable one loses points (more land, walls and roof for the same rooms)
+  const minFp = Math.min(...found.map((c) => c.option.footprint.width * c.option.footprint.depth));
+  for (const c of found) c.option.score = Math.round((c.option.score - 15 * ((c.option.footprint.width * c.option.footprint.depth) / minFp - 1)) * 10) / 10;
+  found.sort((a, b) => b.option.score - a.option.score);
+  const top: DesignOption[] = [];
+  for (const c of found) if (top.length < 3 && !top.some((t) => t.summary === c.option.summary)) top.push(c.option);
+  for (const c of found) if (top.length < 3 && !top.includes(c.option)) top.push(c.option);
+  top.forEach((o, i) => { o.id = `engine_${i + 1}`; o.label = `Rules ${String.fromCharCode(65 + i)}`; });
   return { options: top, errors: [], adjustments, envelope: env };
 }
 

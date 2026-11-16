@@ -33,10 +33,6 @@ export interface EngineInput extends Pick<AutoDesignInput, "floors" | "bedrooms"
   grid: GridSpec;
   /** clear width of corridors, metres (1.0 to 1.2 is the usual residential range) */
   corridorWidth: number;
-  /** optional: rank layouts by Vastu / directional rules relative to the north arrow (off by default) */
-  directional?: boolean;
-  /** optional: your own room-relationship weights (see DEFAULT_ADJACENCY); missing pairs use the defaults */
-  adjacency?: Record<string, number>;
 }
 
 export const DEFAULT_ZONING: ZoningInput = { setbackFront: 0, setbackRear: 0, setbackSide: 0, maxCoveragePct: null, maxFar: null };
