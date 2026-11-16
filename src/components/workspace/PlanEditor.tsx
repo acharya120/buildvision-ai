@@ -35,7 +35,7 @@ type Drag =
   | { kind: "resize"; roomId: string; corner: number; start: Room };
 
 const TOOLS: Array<{ id: Tool; label: string; hint: string }> = [
-  { id: "select", label: "Select", hint: "Click to select. Drag a room to move it, drag its corner squares to resize. Drag empty space to pan." },
+  { id: "select", label: "Select", hint: "Click to select. Drag a room to move it (locked rooms stay put), drag its corner squares to resize. Drag empty space to pan." },
   { id: "room", label: "Add room", hint: "Choose a room type in the left panel, then click the plan to place it (top-left corner at the click)." },
   { id: "wall", label: "Draw wall", hint: "Click the start point, then the end point. Press Esc to cancel." },
   { id: "door", label: "Add door", hint: "Click on a wall to place a door. Walls come from 'Generate walls' or the wall tool." },
@@ -381,6 +381,7 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
                       if (tool !== "select" || e.button !== 0) return;
                       e.stopPropagation();
                       ws.select({ kind: "room", id: r.id });
+                      if (r.locked) { ws.notify(`"${r.name}" is locked, so it will not move. Untick "Locked" in the right panel to move it.`); return; }
                       const w = toWorld(e.clientX, e.clientY);
                       startDrag({ kind: "move", roomId: r.id, offX: w.x - r.x, offY: w.y - r.y }, e);
                     }}
@@ -504,6 +505,7 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
                     if (e.button !== 0) return;
                     e.stopPropagation();
                     const start = floor.rooms.find((q) => q.id === r.id);
+                    if (start?.locked) { ws.notify(`"${start.name}" is locked, so it cannot be resized. Untick "Locked" in the right panel first.`); return; }
                     if (start) startDrag({ kind: "resize", roomId: r.id, corner: i, start }, e);
                   }}
                 />
