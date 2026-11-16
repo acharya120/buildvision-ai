@@ -190,12 +190,12 @@ describe("engine: generated layouts", () => {
     });
   }
 
-  it("returns at most 3 ranked options, best first, with unique labels", () => {
+  it("returns up to 3 options labelled by objective, each with its scores", () => {
     const res = generateEngineOptions({ width: 12, depth: 15 }, inp({ floors: 2, bedrooms: 3 }));
+    expect(res.options.length).toBeGreaterThan(0);
     expect(res.options.length).toBeLessThanOrEqual(3);
-    const scores = res.options.map((o) => o.score);
-    expect([...scores].sort((a, b) => b - a)).toEqual(scores);
-    expect(new Set(res.options.map((o) => o.label)).size).toBe(res.options.length);
+    expect(res.options.map((o) => o.label)).toEqual(["Option A: Maximum space efficiency", "Option B: Optimal daylight and orientation", "Option C: Structural economy"].slice(0, res.options.length));
+    for (const o of res.options) expect(o.notes[0]).toMatch(/Space efficiency \d+(\.\d+)? · Daylight \d+(\.\d+)? · Structural economy \d+(\.\d+)? · Room relationships/);
   });
   it("is deterministic", () => {
     const strip = (r: ReturnType<typeof generateEngineOptions>) => JSON.stringify(r.options.map((o) => ({ ...o, floors: o.floors.map((f) => f.rooms.map((q) => [q.type, q.x, q.y, q.width, q.depth])) })));

@@ -160,6 +160,7 @@ export function parseProject(raw: unknown): ParseResult {
           y: num(r, "y", w),
           width: num(r, "width", w),
           depth: num(r, "depth", w),
+          ...(r.locked === true ? { locked: true } : {}),
         });
       });
       list("walls").forEach((r, i) => {

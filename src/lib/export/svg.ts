@@ -2,7 +2,8 @@ import { buildSite, siteSvg } from "../site/site";
 import { detailSvg } from "../structure/detailSvg";
 import { BRAND } from "../brand";
 import type { Floor, Project } from "../model/types";
-import { ROOM_COLORS, ROOM_TYPE_LABELS } from "../model/defaults";
+import { DEFAULT_DETAIL, ROOM_COLORS, ROOM_TYPE_LABELS } from "../model/defaults";
+import { DEFAULT_LAYERS, type ExportLayers } from "./layers";
 import { formatArea, formatLength, formatPlotArea, M_PER_FT } from "../model/units";
 import { isValidRect } from "../geometry/rect";
 import { polygonPath } from "../geometry/polygon";
@@ -37,6 +38,13 @@ export interface SvgOptions {
   scale?: number;
   /** floor to draw faintly underneath (dashed) */
   ghostFloor?: Floor | null;
+  /**
+   * Optional layer choice for export. When given, the grid (background grid and structural grid lines), furniture and
+   * dimension lines are each included or left out. When absent nothing changes (the classic drawing).
+   */
+  layers?: Partial<ExportLayers>;
+  /** wrap each kind of content in its own named group (id and data-layer), so CAD and vector editors can show or hide it */
+  layered?: boolean;
 }
 
 function dimension(x1: number, y1: number, x2: number, y2: number, offset: number, label: string): string {
@@ -70,6 +78,11 @@ let clipCounter = 0;
 
 /** Dimensioned, scaled floor-plan drawing as a standalone SVG document string (real vector geometry). */
 export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): string {
+  const L = opts.layers ? { ...DEFAULT_LAYERS, ...opts.layers } : null;
+  if (L && (L.furniture || L.grid) && !p.detail) p = { ...p, detail: { ...DEFAULT_DETAIL, grid: false, columns: false, beams: false, footings: false, furniture: false, stairs: false, loads: undefined } };
+  if (L && p.detail) p = { ...p, detail: { ...p.detail, grid: L.grid, furniture: L.furniture } };
+  const gOpen = (id: string) => { if (opts.layered) out.push(`<g id="${id}" data-layer="${id}">`); };
+  const gClose = () => { if (opts.layered) out.push("</g>"); };
   const floor = p.floors.find((f) => f.id === floorId) ?? p.floors[0];
   const showTitle = opts.showTitleBlock !== false;
   // when the building is a small part of a big plot, draw only the area around it (the plot size stays in the title block)
@@ -106,7 +119,8 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
   out.push(`<title>${esc(p.name)} - ${esc(floor.name)}</title>`);
   out.push(`<rect width="100%" height="100%" fill="#ffffff"/>`);
 
-  if (opts.showGrid !== false) {
+  gOpen("GRID");
+  if (L ? L.grid : opts.showGrid !== false) {
     const step = sys === "metric" ? 1 : M_PER_FT * 1;
     const major = sys === "metric" ? 1 : M_PER_FT * 5;
     for (let g = Math.ceil(vx / step) * step; g <= vx + vw + 1e-6; g += step) {
@@ -119,6 +133,8 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     }
   }
 
+  gClose();
+  gOpen("PLOT");
   out.push(`<clipPath id="${clipId}"><rect x="${f2(ox)}" y="${f2(oy)}" width="${f2(planW)}" height="${f2(planH)}"/></clipPath><g clip-path="url(#${clipId})">`);
   out.push(p.plot.polygon
     ? `<path d="${polygonPath(p.plot.polygon, X, Y)}" fill="none" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="8 4"/>`
@@ -129,21 +145,27 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     if (site) out.push(siteSvg(site, X, Y, s, 1));
   }
   out.push("</g>");
+  gClose();
 
   if (opts.ghostFloor) {
     for (const r of opts.ghostFloor.rooms.filter(isValidRect))
       out.push(`<rect x="${X(r.x)}" y="${Y(r.y)}" width="${f2(r.width * s)}" height="${f2(r.depth * s)}" fill="none" stroke="#8892a6" stroke-width="0.8" stroke-dasharray="3 3"/>`);
   }
 
+  gOpen("ROOMS");
   for (const r of floor.rooms.filter(isValidRect)) {
     out.push(`<rect x="${X(r.x)}" y="${Y(r.y)}" width="${f2(r.width * s)}" height="${f2(r.depth * s)}" fill="${ROOM_COLORS[r.type]}" stroke="#6b7280" stroke-width="0.6"/>`);
   }
+  gClose();
+  gOpen("WALLS");
   for (const w of floor.walls) {
     const pts = wallPolygon(w)
       .map((pt) => `${X(pt.x)},${Y(pt.y)}`)
       .join(" ");
     out.push(`<polygon points="${pts}" fill="#2b2f3a"/>`);
   }
+  gClose();
+  gOpen("OPENINGS");
   for (const o of floor.openings) {
     const w = floor.walls.find((x) => x.id === o.wallId);
     if (!w) continue;
@@ -165,7 +187,19 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     }
   }
 
-  if (p.detail) out.push(detailSvg(p, floor, Math.max(0, p.floors.indexOf(floor)), X, Y, s, 1, X(vx) - 58, Y(vy) - 58));
+  gClose();
+  if (p.detail) {
+    const fi = Math.max(0, p.floors.indexOf(floor));
+    const call = (d: Project["detail"]) => detailSvg({ ...p, detail: d }, floor, fi, X, Y, s, 1, X(vx) - 58, Y(vy) - 58);
+    if (opts.layered) {
+      const off = { ...p.detail, grid: false, columns: false, beams: false, footings: false, furniture: false, stairs: false, loads: undefined };
+      gOpen("FURNITURE"); out.push(call({ ...off, furniture: p.detail.furniture })); gClose();
+      gOpen("GRID_STRUCTURAL"); out.push(call({ ...off, grid: p.detail.grid, columns: p.detail.columns, beams: p.detail.beams, footings: p.detail.footings } as never)); gClose();
+      gOpen("STAIRS_LOADS"); out.push(call({ ...off, stairs: p.detail.stairs, loads: p.detail.loads })); gClose();
+    } else out.push(call(p.detail));
+  }
+
+  gOpen("LABELS");
 
   for (const r of floor.rooms.filter(isValidRect)) {
     const cx = X(r.x + r.width / 2);
@@ -178,9 +212,15 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     );
   }
 
+  gClose();
+  gOpen("DIMENSIONS");
+  if (!L || L.dimensions) {
   for (const d of floor.dimensions) out.push(dimension(X(d.x1), Y(d.y1), X(d.x2), Y(d.y2), -14, formatLength(Math.hypot(d.x2 - d.x1, d.y2 - d.y1), sys)));
   out.push(dimension(X(vx), Y(vy), X(vx + vw), Y(vy), -34, cropped ? `Area shown ${formatLength(vw, sys)}` : `Plot width ${formatLength(p.plot.width, sys)}`));
   out.push(dimension(X(vx), Y(vy), X(vx), Y(vy + vd), 34, cropped ? `Area shown ${formatLength(vd, sys)}` : `Plot depth ${formatLength(p.plot.depth, sys)}`));
+  }
+  gClose();
+  gOpen("ANNOTATION");
 
   // north arrow (top-right of the plot)
   {
@@ -217,6 +257,7 @@ export function planToSvg(p: Project, floorId: string, opts: SvgOptions = {}): s
     out.push(`<text x="22" y="${ty + 20 + 4 * 16 + 2}" font-size="9" fill="#a02020">${esc(DISCLAIMER_SHORT)}</text>`);
   }
 
+  gClose();
   out.push(`</svg>`);
   return out.join("\n");
 }

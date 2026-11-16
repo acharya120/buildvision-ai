@@ -82,6 +82,8 @@ export interface Room {
   y: number;
   width: number;
   depth: number;
+  /** optional: kept in place when the advanced generator rearranges the other rooms of the floor */
+  locked?: boolean;
 }
 
 export interface Wall {

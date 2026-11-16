@@ -20,6 +20,7 @@ export default function AdvancedRulesCard({ base, plot, onResult }: { base: Auto
   const [corr, setCorr] = useState<number>(CORRIDOR_LIMITS.usualMax);
   const [cov, setCov] = useState("");
   const [far, setFar] = useState("");
+  const [dir, setDir] = useState(false);
   const parse = (s: string): number | null => (s.trim() === "" ? null : Number(s));
   const grid: GridSpec = preset === "custom" ? custom : (GRID_PRESETS.find((p) => p.id === preset) ?? GRID_PRESETS[0]).grid;
 
@@ -28,7 +29,7 @@ export default function AdvancedRulesCard({ base, plot, onResult }: { base: Auto
       ...DEFAULT_ENGINE_INPUT,
       floors: base.floors, bedrooms: base.bedrooms, includeDining: base.includeDining, includeStudy: base.includeStudy, includeGarage: base.includeGarage,
       includeBalcony: base.includeBalcony, includeUtility: base.includeUtility, attachedBathMaster: base.attachedBathMaster, northAngle: base.northAngle, frontSide: base.frontSide,
-      grid, corridorWidth: corr,
+      grid, corridorWidth: corr, directional: dir,
       zoning: { setbackFront: base.setbackFront, setbackRear: base.setbackRear, setbackSide: base.setbackSide, maxCoveragePct: parse(cov), maxFar: parse(far) },
     });
     onResult({ options: res.options, errors: res.errors, adjustments: res.adjustments });
@@ -68,6 +69,10 @@ export default function AdvancedRulesCard({ base, plot, onResult }: { base: Auto
             <div><Label htmlFor="adv-cov">Max ground coverage % (blank = none)</Label><input id="adv-cov" className={inputCls} inputMode="decimal" value={cov} onChange={(e) => setCov(e.target.value)} /></div>
             <div><Label htmlFor="adv-far">Max FAR / FSI (blank = none)</Label><input id="adv-far" className={inputCls} inputMode="decimal" value={far} onChange={(e) => setFar(e.target.value)} /></div>
           </div>
+          <label className="flex items-start gap-2 text-sm" htmlFor="adv-dir">
+            <input id="adv-dir" className="mt-1" type="checkbox" checked={dir} onChange={(e) => setDir(e.target.checked)} />
+            <span>Prefer traditional directional placement (Vastu-style guidance, using the north angle of this project). This only influences which of the three layouts is ranked first; it is traditional guidance, not a rule of law or science, and each layout lists which directions were not met.</span>
+          </label>
           <button className={btnPrimary} onClick={run}>Generate with rules</button>
         </div>
       )}

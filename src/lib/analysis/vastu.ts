@@ -24,7 +24,7 @@ export const VASTU_RULES: Partial<Record<RoomType, VastuRule>> = {
   store: { good: ["NW", "SW"], ok: ["W", "S"], avoid: ["NE"], text: "Store: north-west or south-west." },
   garage: { good: ["NW", "SE"], ok: ["S", "W"], avoid: ["NE"], text: "Garage: north-west or south-east." },
 };
-const ENTRANCE: VastuRule = { good: ["N", "NE", "E"], ok: ["NW", "SE"], avoid: ["SW"], text: "Main entrance: north, north-east or east." };
+export const ENTRANCE: VastuRule = { good: ["N", "NE", "E"], ok: ["NW", "SE"], avoid: ["SW"], text: "Main entrance: north, north-east or east." };
 
 export interface VastuRoom { floorName: string; roomId: string; name: string; type: RoomType; sector: Sector | "Centre"; rating: VastuRating; text: string }
 export interface VastuResult {
