@@ -14,10 +14,10 @@ import { saveProject } from "@/lib/storage/local";
 import { useWorkspace } from "@/lib/state/store";
 import { btn, TextField } from "../ui/Field";
 import { IconPlan, IconMagic, IconCube, IconCalc, IconDownload, IconChat, IconLayers, Logo } from "../ui/Icons";
+import PlanEditor from "./PlanEditor";
 import LeftPanel from "./LeftPanel";
 import RightPanel from "./RightPanel";
 import Viewer3D from "./Viewer3D";
-import PlanCanvasArea from "./PlanCanvasArea";
 import EstimatePanel from "./EstimatePanel";
 import DrawingsPanel from "./DrawingsPanel";
 import AssistantPanel from "./AssistantPanel";
@@ -206,7 +206,7 @@ export default function Workspace() {
               <LeftPanel />
             </aside>
             <section className={`${planPane === "canvas" ? "block" : "hidden"} min-h-[420px] flex-1 lg:order-2 lg:block lg:h-full`} aria-label={`Floor plan editor, ${floor.name}`}>
-              <PlanCanvasArea issues={issues} />
+              <PlanEditor issues={issues} />
             </section>
             <aside className={`${planPane === "props" ? "block" : "hidden"} overflow-y-auto border-ink-200 bg-ink-50 lg:order-3 lg:block lg:border-l thin-scroll`} aria-label="Properties and checks">
               <RightPanel issues={issues} />

@@ -72,9 +72,6 @@ export default function RightPanel({ issues }: { issues: ValidationIssue[] }) {
                 {ROOM_TYPES.map((t) => <option key={t} value={t}>{ROOM_TYPE_LABELS[t]}</option>)}
               </select>
             </div>
-            <label className="flex items-center gap-2 text-xs" title="A locked room keeps its place and size when you press Rearrange unlocked rooms in Auto design, Advanced rules.">
-              <input type="checkbox" checked={!!room.locked} onChange={(e) => ws.commit(updateRoom(cur(), floor.id, room.id, { locked: e.target.checked ? true : undefined }))} /> Locked (kept when rearranging)
-            </label>
             <div className="grid grid-cols-2 gap-2">
               <LengthField label="Width" meters={room.width} system={sys} min={0.1} max={5000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { width: m }))} />
               <LengthField label="Depth" meters={room.depth} system={sys} min={0.1} max={5000} onCommit={(m) => ws.commit(updateRoom(cur(), floor.id, room.id, { depth: m }))} />

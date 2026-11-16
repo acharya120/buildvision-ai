@@ -385,12 +385,6 @@ export default function PlanEditor({ issues }: { issues: ValidationIssue[] }) {
                       startDrag({ kind: "move", roomId: r.id, offX: w.x - r.x, offY: w.y - r.y }, e);
                     }}
                   />
-                  {r.locked && ok && (
-                    <g pointerEvents="none" transform={`translate(${r.x + px(4)} ${r.y + px(4)}) scale(${px(1)})`} aria-label="Locked room">
-                      <rect x="0" y="6" width="10" height="8" rx="1.5" fill="#92400e" />
-                      <path d="M2.5 6V4a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="#92400e" strokeWidth="1.6" />
-                    </g>
-                  )}
                   {ok && r.width * s > 54 && r.depth * s > 34 && (
                     <g pointerEvents="none" fontSize={px(12)} textAnchor="middle" fill="#1f2430">
                       <text x={r.x + r.width / 2} y={r.y + r.depth / 2 - px(6)} fontWeight="bold">{r.name}</text>

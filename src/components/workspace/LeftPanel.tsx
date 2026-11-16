@@ -206,7 +206,7 @@ export default function LeftPanel() {
                   onClick={() => ws.select({ kind: "room", id: r.id })}
                   className={`cursor-pointer border-t border-ink-100 ${selection?.kind === "room" && selection.id === r.id ? "bg-brand-50" : "hover:bg-ink-50"}`}
                 >
-                  <td className="py-1 pr-1">{r.name}{r.locked ? " (locked)" : ""}</td>
+                  <td className="py-1 pr-1">{r.name}</td>
                   <td className="py-1 pr-1 text-ink-600">{isValidRect(r) ? `${formatLength(r.width, sys)} × ${formatLength(r.depth, sys)}` : "invalid"}</td>
                   <td className="py-1 text-right">{isValidRect(r) ? formatArea(r.width * r.depth, sys) : "-"}</td>
                 </tr>

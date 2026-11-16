@@ -14,7 +14,6 @@ import { serializeProject } from "@/lib/model/schema";
 import { formatArea, formatLength } from "@/lib/model/units";
 import { ROOM_TYPE_LABELS } from "@/lib/model/defaults";
 import { useWorkspace } from "@/lib/state/store";
-import LayerExportCard from "./LayerExportCard";
 import { btn, btnPrimary, Disclaimer, inputCls, Label } from "../ui/Field";
 
 type View = "plan" | "elevation" | "section" | "schedule" | "columns" | "beams" | "footings" | "ssection" | "iso" | "site";
@@ -165,7 +164,6 @@ export default function DrawingsPanel() {
         </div>
       )}
 
-      <LayerExportCard />
       <section className="rounded-lg border border-ink-200 bg-white p-4" aria-labelledby="exp-h">
         <h2 id="exp-h" className="mb-1 font-semibold">Export the whole project</h2>
         <p className="mb-3 text-sm text-ink-600">The PDF is a vector drawing (one dimensioned sheet per floor on A3 landscape) followed by schedules, the estimate and the disclaimer.</p>
